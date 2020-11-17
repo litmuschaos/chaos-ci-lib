@@ -1,0 +1,28 @@
+#Creating go binary for installing litmus
+go test -o build/_output/install-litmus -c litmus/install-litmus_test.go -v -count=1
+#Creating go binary for uninstalling litmus
+go test -o build/_output/uninstall-litmus -c litmus/uninstall-litmus_test.go -v -count=1
+
+#Creating go binary for pod-delete test
+go test -o build/_output/pod-delete -c tests/pod-delete_test.go -v -count=1
+#Creating go binary for container-kill test
+go test -o build/_output/container-kill -c tests/container-kill_test.go -v -count=1
+#Creating go binary for pod-cpu-hog test
+go test -o build/_output/pod-cpu-hog -c tests/pod-cpu-hog_test.go -v -count=1
+#Creating go binary for pod-memory-hog test
+go test -o build/_output/pod-memory-hog -c tests/pod-memory-hog_test.go -v -count=1
+#Creating go binary for node-cpu-hog test
+go test -o build/_output/node-cpu-hog -c tests/node-cpu-hog_test.go -v -count=1
+#Creating go binary for node-memory-hog test
+go test -o build/_output/node-memory-hog -c tests/node-memory-hog_test.go -v -count=1
+#Creating go binary for pod-network-corruption test
+go test -o build/_output/pod-network-corruption -c tests/pod-network-corruption_test.go -v -count=1
+#Creating go binary for pod-network-latency test
+go test -o build/_output/pod-network-latency -c tests/pod-network-latency_test.go -v -count=1
+#Creating go binary for pod-network-loss test
+go test -o build/_output/pod-network-loss -c tests/pod-network-loss_test.go -v -count=1
+#Creating go binary for disk-fill test
+go test -o build/_output/disk-fill -c tests/disk-fill_test.go -v -count=1
+
+#Creating go binary for all the tests
+cd tests && go test -o ../build/_output/all-experiments -c -v -count=1
