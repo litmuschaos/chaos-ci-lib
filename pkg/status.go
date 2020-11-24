@@ -4,15 +4,34 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/litmuschaos/litmus-go/pkg/utils/retry"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog"
 )
 
 //RunnerPodStatus will check the status of runner pod and waits for it to come in running state
 func RunnerPodStatus(runnerNamespace string, engineName string, client *kubernetes.Clientset) (int, error) {
 
-	time.Sleep(10 * time.Second)
+	// Wait for runner pod to create
+	timeout := 40
+	delay := 2
+	err := retry.
+		Times(uint(timeout / delay)).
+		Wait(time.Duration(delay) * time.Second).
+		Try(func(attempt uint) error {
+			runner, err := client.CoreV1().Pods(runnerNamespace).Get(engineName+"-runner", metav1.GetOptions{})
+			if err != nil {
+				klog.Infof("Runner pod %v is in %v state", runner.Name, runner.Status)
+				return errors.Errorf("Fail to get the runner pod status, due to:%v", err)
+			}
+			return nil
+		})
+	if err != nil {
+		return 0, err
+	}
+
 	//Fetching the runner pod and Checking if it gets in Running state or not
 	runner, err := client.CoreV1().Pods(runnerNamespace).Get(engineName+"-runner", metav1.GetOptions{})
 	if err != nil {
