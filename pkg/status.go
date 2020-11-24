@@ -14,7 +14,7 @@ import (
 //RunnerPodStatus will check the status of runner pod and waits for it to come in running state
 func RunnerPodStatus(runnerNamespace string, engineName string, client *kubernetes.Clientset) (int, error) {
 
-	// Wait for runner pod to creation
+	// Wait for runner pod to create
 	timeout := 40
 	delay := 2
 	err := retry.
@@ -24,7 +24,7 @@ func RunnerPodStatus(runnerNamespace string, engineName string, client *kubernet
 			runner, err := client.CoreV1().Pods(runnerNamespace).Get(engineName+"-runner", metav1.GetOptions{})
 			if err != nil {
 				klog.Infof("Runner pod %v is in %v state", runner.Name, runner.Status)
-				return errors.Wrapf(err, "Fail to get the runner pod status, due to:%v", err)
+				return errors.Errorf("Fail to get the runner pod status, due to:%v", err)
 			}
 			return nil
 		})
