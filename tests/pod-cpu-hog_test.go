@@ -77,12 +77,10 @@ var _ = Describe("BDD of pod-cpu-hog experiment", func() {
 			Expect(err).To(BeNil(), "Failed to update total chaos duration")
 			err = pkg.EditKeyValue(experimentName+"-ce.yaml", "NODE_CPU_CORE", "value: ''", "value: '"+pkg.GetEnv("CPU_CORES", "1")+"'")
 			Expect(err).To(BeNil(), "Failed to update the cpu cores")
-			err = pkg.EditKeyValue(experimentName+"-ce.yaml", "TARGET_CONTAINER", "value: 'nginx'", "value: '"+pkg.GetEnv("TARGET_CONTAINER", "nginx")+"'")
-			Expect(err).To(BeNil(), "Failed to update the target container name")
-			err = pkg.EditKeyValue(experimentName+"-ce.yaml", "CHAOS_KILL_COMMAND", "value: \"kill -9 $(ps afx | grep \"[md5sum] /dev/zero\" | awk '{print$1}' | tr '\n' ' ')\"", "value: '"+pkg.GetEnv("CHAOS_KILL_COMMAND", "\"kill -9 $(ps afx | grep \"[md5sum] /dev/zero\" | awk '{print$1}' | tr '\n' ' ')\"")+"'")
-			Expect(err).To(BeNil(), "Failed to update the chaos kill command")
-			err = pkg.EditKeyValue(experimentName+"-ce.yaml", "CHAOS_INJECT_COMMAND", "value: 'md5sum /dev/zero'", "value: '"+pkg.GetEnv("CHAOS_INJECT_COMMAND", "md5sum /dev/zero")+"'")
-			Expect(err).To(BeNil(), "Failed to update the chaos inject command")
+			err = pkg.AddAfterMatch(experimentName+"-ce.yaml", "value: '60'", "\n            - name: CHAOS_INJECT_COMMAND\n              value: '"+pkg.GetEnv("CHAOS_INJECT_COMMAND", "md5sum /dev/zero")+"'")
+			Expect(err).To(BeNil(), "Failed to add the chaos inject command")
+			err = pkg.AddAfterMatch(experimentName+"-ce.yaml", "value: '60'", "\n            - name: CHAOS_KILL_COMMAND\n              value: "+pkg.GetEnv("CHAOS_KILL_COMMAND", "kill -9 $(ps afx | grep \"[md5sum] /dev/zero\" | awk '{print$1}' | tr '\\n' ' ')")+"")
+			Expect(err).To(BeNil(), "Failed to add the chaos kill command")
 
 			//Creating ChaosEngine
 			By("Creating ChaosEngine")
