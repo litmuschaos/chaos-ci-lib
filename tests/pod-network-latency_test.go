@@ -77,13 +77,11 @@ var _ = Describe("BDD of pod-network-latency experiment", func() {
 			Expect(err).To(BeNil(), "Failed to update total chaos duration")
 			err = pkg.EditKeyValue(experimentName+"-ce.yaml", "NETWORK_INTERFACE", "value: ''", "value: '"+pkg.GetEnv("NETWORK_INTERFACE", "eth0")+"'")
 			Expect(err).To(BeNil(), "Failed to update the network interface")
-			err = pkg.EditKeyValue(experimentName+"-ce.yaml", "TARGET_CONTAINER", "value: 'nginx'", "value: '"+pkg.GetEnv("TARGET_CONTAINER", "nginx")+"'")
-			Expect(err).To(BeNil(), "Failed to update the target container name")
 			err = pkg.EditKeyValue(experimentName+"-ce.yaml", "NETWORK_LATENCY", "value: 'nginx'", "value: '"+pkg.GetEnv("NETWORK_LATENCY", "60000")+"'")
 			Expect(err).To(BeNil(), "Failed to update the network latency value")
 			err = pkg.EditKeyValue(experimentName+"-ce.yaml", "CONTAINER_RUNTIME", "value: 'docker'", "value: '"+pkg.GetEnv("CONTAINER_RUNTIME", "docker")+"'")
 			Expect(err).To(BeNil(), "Fail to update the network runtime")
-			err = pkg.EditKeyValue(experimentName+"-ce.yaml", "SOCKET_PATH", "value: '/run/containerd/containerd.sock'", "value: '"+pkg.GetEnv("SOCKET_PATH", "/run/containerd/containerd.sock")+"'")
+			err = pkg.EditKeyValue(experimentName+"-ce.yaml", "SOCKET_PATH", "value: '/var/run/docker.sock'", "value: '"+pkg.GetEnv("SOCKET_PATH", "/run/containerd/containerd.sock")+"'")
 			Expect(err).To(BeNil(), "Fail to update the socket path env")
 
 			//Creating ChaosEngine
