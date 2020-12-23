@@ -81,7 +81,7 @@ var _ = Describe("BDD of container-kill experiment", func() {
 			Expect(err).To(BeNil(), "Failed to update the total chaos duration")
 			err = pkg.EditKeyValue(experimentName+"-ce.yaml", "CONTAINER_RUNTIME", "value: 'docker'", "value: '"+pkg.GetEnv("CONTAINER_RUNTIME", "docker")+"'")
 			Expect(err).To(BeNil(), "Fail to update the network runtime")
-			err = pkg.EditKeyValue(experimentName+"-ce.yaml", "SOCKET_PATH", "value: '/run/containerd/containerd.sock'", "value: '"+pkg.GetEnv("SOCKET_PATH", "/run/containerd/containerd.sock")+"'")
+			err = pkg.EditKeyValue(experimentName+"-ce.yaml", "SOCKET_PATH", "value: '/var/run/docker.sock'", "value: '"+pkg.GetEnv("SOCKET_PATH", "/run/containerd/containerd.sock")+"'")
 			Expect(err).To(BeNil(), "Fail to update the socket path env")
 
 			//Creating ChaosEngine

@@ -77,10 +77,8 @@ var _ = Describe("BDD of pod-memory-hog experiment", func() {
 			Expect(err).To(BeNil(), "Failed to update total chaos duration")
 			err = pkg.EditKeyValue(experimentName+"-ce.yaml", "NODE_CPU_CORE", "value: ''", "value: '"+pkg.GetEnv("MEMORY_CONSUMPTION", "500")+"'")
 			Expect(err).To(BeNil(), "Failed to update the memory consumption in megabytes")
-			err = pkg.EditKeyValue(experimentName+"-ce.yaml", "TARGET_CONTAINER", "value: 'nginx'", "value: '"+pkg.GetEnv("TARGET_CONTAINER", "nginx")+"'")
-			Expect(err).To(BeNil(), "Failed to update the target container name")
-			err = pkg.EditKeyValue(experimentName+"-ce.yaml", "CHAOS_KILL_COMMAND", "value: \"kill -9 $(ps afx | grep \"[md5sum] /dev/zero\" | awk '{print$1}' | tr '\n' ' ')\"", "value: '"+pkg.GetEnv("CHAOS_KILL_COMMAND", "\"kill -9 $(ps afx | grep \"[md5sum] /dev/zero\" | awk '{print$1}' | tr '\n' ' ')\"")+"'")
-			Expect(err).To(BeNil(), "Failed to update the chaos kill command")
+			err = pkg.AddAfterMatch(experimentName+"-ce.yaml", "value: '60'", "\n            - name: CHAOS_KILL_COMMAND\n              value: "+pkg.GetEnv("CHAOS_KILL_COMMAND", "kill -9 $(ps afx | grep \"[md5sum] /dev/zero\" | awk '{print$1}' | tr '\\n' ' ')")+"")
+			Expect(err).To(BeNil(), "Failed to add the chaos kill command")
 
 			//Creating ChaosEngine
 			By("Creating ChaosEngine")
