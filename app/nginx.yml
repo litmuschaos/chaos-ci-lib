@@ -6,16 +6,16 @@ metadata:
   annotations:
     litmuschaos.io/chaos: "true"
   labels:
-    run: nginx
+    app: nginx
 spec:
   replicas: 3
   selector:
     matchLabels:
-      run: nginx
+      app: nginx
   template:
     metadata:
       labels:
-        run: nginx
+        app: nginx
     spec:
       containers:
       - name: nginx
