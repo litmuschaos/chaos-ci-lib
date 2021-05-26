@@ -15,14 +15,14 @@ var err error
 //InstallNodeMemoryHogEngine installs the given chaosengine for the experiment
 func InstallNodeMemoryHogEngine(experimentsDetails *types.ExperimentDetails) error {
 
-	if err = pkg.ModifyEngineSpec(experimentsDetails, true); err != nil {
+	if err = pkg.ModifyEngineSpec(experimentsDetails, false); err != nil {
 		return errors.Errorf("Fail to Update the engine file, due to %v", err)
 	}
 	//Modify ENVs
 	if err = pkg.EditKeyValue("/tmp/"+experimentsDetails.ExperimentName+"-ce.yaml", "TOTAL_CHAOS_DURATION", "value: '60'", "value: '"+strconv.Itoa(experimentsDetails.ChaosDuration)+"'"); err != nil {
 		return errors.Errorf("Fail to Update the engine file, due to %v", err)
 	}
-	if err = pkg.EditKeyValue("/tmp/"+experimentsDetails.ExperimentName+"-ce.yaml", "MEMORY_PERCENTAGE", "value: '30'", "value: '"+strconv.Itoa(experimentsDetails.FillPercentage)+"'"); err != nil {
+	if err = pkg.EditKeyValue("/tmp/"+experimentsDetails.ExperimentName+"-ce.yaml", "MEMORY_CONSUMPTION_PERCENTAGE", "value: '30'", "value: '"+strconv.Itoa(experimentsDetails.MemoryConsumptionPercentage)+"'"); err != nil {
 		return errors.Errorf("Fail to Update the engine file, due to %v", err)
 	}
 	log.Info("[Engine]: Installing ChaosEngine...")

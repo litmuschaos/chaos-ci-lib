@@ -28,25 +28,6 @@ func Kubectl(command ...string) error {
 	return nil
 }
 
-// func PrepareChaos(experimentsDetails *types.ExperimentDetails, annotation bool) error {
-
-// 	experimentsDetails.AnnotationCheck = strconv.FormatBool(annotation)
-// 	//Installing RBAC for the experimen
-// 	log.Info("[Install]: Installing RBAC")
-// 	err = InstallGoRbac(experimentsDetails, experimentsDetails.ChaosNamespace)
-// 	if err != nil {
-// 		return errors.Errorf("Fail to install rbac, due to {%v}", err)
-// 	}
-
-// 	//Installing Chaos Engine
-// 	log.Info("[Install]: Installing chaos engine")
-// 	err = InstallGoChaosEngine(experimentsDetails, experimentsDetails.ChaosNamespace)
-// 	if err != nil {
-// 		return errors.Errorf("Fail to install chaosengine, due to {%v}", err)
-// 	}
-// 	return nil
-// }
-
 func ModifyEngineSpec(experimentsDetails *types.ExperimentDetails, appinfo bool) error {
 
 	// Fetch Chaos Engine
@@ -55,6 +36,10 @@ func ModifyEngineSpec(experimentsDetails *types.ExperimentDetails, appinfo bool)
 	}
 	// Add imagePullPolicy of chaos-runner to Always
 	if err = AddAfterMatch("/tmp/"+experimentsDetails.ExperimentName+"-ce.yaml", "jobCleanUpPolicy", "  components:\n    runner:\n      imagePullPolicy: "+experimentsDetails.ImagePullPolicy); err != nil {
+		log.Warnf("Fail to add a new line due to %v", err)
+	}
+	// Add imagePullPolicy of chaos-runner to Always
+	if err = AddAfterMatch("/tmp/"+experimentsDetails.ExperimentName+"-ce.yaml", "jobCleanUpPolicy", "  annotationCheck: '"+experimentsDetails.AnnotationCheck+"'"); err != nil {
 		log.Warnf("Fail to add a new line due to %v", err)
 	}
 	// Modify the spec of engine file
@@ -68,11 +53,6 @@ func ModifyEngineSpec(experimentsDetails *types.ExperimentDetails, appinfo bool)
 	}
 	if err = EditFile("/tmp/"+experimentsDetails.ExperimentName+"-ce.yaml", "jobCleanUpPolicy: 'delete'", "jobCleanUpPolicy: "+experimentsDetails.JobCleanUpPolicy+""); err != nil {
 		log.Warnf("Fail to Update the engine file, due to %v", err)
-	}
-	if err = EditFile("/tmp/"+experimentsDetails.ExperimentName+"-ce.yaml", "annotationCheck: 'true'", "annotationCheck: '"+experimentsDetails.AnnotationCheck+"'"); err != nil {
-		if err = EditFile("/tmp/"+experimentsDetails.ExperimentName+"-ce.yaml", "annotationCheck: 'false'", "annotationCheck: '"+experimentsDetails.AnnotationCheck+"'"); err != nil {
-			log.Warnf("Fail to Update the engine file, due to %v", err)
-		}
 	}
 	// Modify appinfo
 	if appinfo {

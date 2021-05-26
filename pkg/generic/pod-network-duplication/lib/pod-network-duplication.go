@@ -1,4 +1,4 @@
-Spackage lib
+package lib
 
 import (
 	"strconv"

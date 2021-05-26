@@ -36,6 +36,7 @@ func GetENV(experimentDetails *types.ExperimentDetails, expName, engineName stri
 	experimentDetails.FillPercentage, _ = strconv.Atoi(Getenv("MEMORY_PERCENTAGE", "80"))
 	experimentDetails.ContainerRuntime = Getenv("CONTAINER_RUNTIME", "containerd")
 	experimentDetails.SocketPath = Getenv("SOCKET_PATH", "/run/containerd/containerd.sock")
+	experimentDetails.MemoryConsumptionPercentage, _ = strconv.Atoi(Getenv("MEMORY_CONSUMPTION_PERCENTAGE", "30"))
 	experimentDetails.NetworkInterface = Getenv("NETWORK_INTERFACE", "eth0")
 	experimentDetails.NetworkPacketDuplicationPercentage, _ = strconv.Atoi(Getenv("NETWORK_PACKET_DUPLICATION_PERCENTAGE", "100"))
 	experimentDetails.FileSystemUtilizationPercentage, _ = strconv.Atoi(Getenv("FILESYSTEM_UTILIZATION_PERCENTAGE", "10"))

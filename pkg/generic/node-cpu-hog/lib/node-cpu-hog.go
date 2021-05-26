@@ -15,7 +15,7 @@ var err error
 //InstallNodeCPUHogEngine installs the given chaosengine for the experiment
 func InstallNodeCPUHogEngine(experimentsDetails *types.ExperimentDetails) error {
 
-	if err = pkg.ModifyEngineSpec(experimentsDetails, true); err != nil {
+	if err = pkg.ModifyEngineSpec(experimentsDetails, false); err != nil {
 		return errors.Errorf("Fail to Update the engine file, due to %v", err)
 	}
 	//Modify ENVs

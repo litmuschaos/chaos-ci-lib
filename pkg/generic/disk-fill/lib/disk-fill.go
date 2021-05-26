@@ -1,4 +1,4 @@
-package disk-fill
+package lib
 
 import (
 	"strconv"

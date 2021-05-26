@@ -21,14 +21,12 @@ func RunnerPodStatus(experimentsDetails *types.ExperimentDetails, runnerNamespac
 		return nil, errors.Errorf("Unable to get the runner pod, due to %v", err)
 	}
 	log.Infof("name : %v ", runner.Name)
-	//Running it for infinite time (say 3000 * 10)
-	//The Gitlab job will quit if it takes more time than default time (10 min)
 	for i := 0; i < 300; i++ {
 		if string(runner.Status.Phase) != "Running" {
 			time.Sleep(1 * time.Second)
 			runner, err = clients.KubeClient.CoreV1().Pods(runnerNamespace).Get(experimentsDetails.EngineName+"-runner", metav1.GetOptions{})
 			if err != nil || runner.Status.Phase == "Succeeded" || runner.Status.Phase == "" {
-				return nil, errors.Errorf("Fail to get the runner pod status after sleep, due to %v", err)
+				return nil, errors.Errorf("Fail to get the runner pod status, runner pod status is %v, err: %v", runner.Status.Phase, err)
 			}
 			log.Infof("The Runner pod is in %v State ", runner.Status.Phase)
 		} else {

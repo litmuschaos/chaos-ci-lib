@@ -39,4 +39,5 @@ type ExperimentDetails struct {
 	OperatorImage                      string
 	RunnerImage                        string
 	InstallLitmus                      string
+	MemoryConsumptionPercentage        int
 }
