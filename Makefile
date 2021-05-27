@@ -12,7 +12,7 @@ DOCKER_IMAGE ?= chaos-ci-lib
 DOCKER_TAG ?= ci
 
 .PHONY: all
-all: format lint deps build test security-checks push 
+all: format lint deps build test trivy-check push 
 
 .PHONY: help
 help:
@@ -57,27 +57,20 @@ godeps:
 
 
 PHONY: build
-build: docker-build
+build: go-binary-build docker-build
+
+PHONY: go-binary-build
+go-binary-build:
+	@echo "---------------------------"
+	@echo "--> Building Go Test Binary" 
+	@echo "---------------------------"
+	@sh build/generate_go_binary
 
 docker-build: 
 	@echo "----------------------------"
 	@echo "--> Build chaos-ci-lib image" 
 	@echo "----------------------------"
-	# Dockerfile available in the repo root
-	sudo docker build . -f build/Dockerfile -t $(DOCKER_REPO)/$(DOCKER_IMAGE):$(DOCKER_TAG)
-
-
-PHONY: go-build
-go-build: test-go-binary
-
-test-go-binary:
-	@echo "------------------------"
-	@echo "--> Build test go binary" 
-	@echo "------------------------"
-	@sh build/generate_go_binary
-
-.PHONY: security-checks
-security-checks: trivy-security-check
+	@docker build . -f build/Dockerfile -t $(DOCKER_REPO)/$(DOCKER_IMAGE):$(DOCKER_TAG)
 
 .PHONY: push
 push: docker-push
@@ -86,4 +79,14 @@ docker-push:
 	@echo "---------------------------"
 	@echo "--> Push chaos-ci-lib image" 
 	@echo "---------------------------"
-	REPONAME="litmuschaos" IMGNAME="chaos-ci-lib" IMGTAG="ci" ./build/push
+	@docker push $(DOCKER_REPO)/$(DOCKER_IMAGE):$(DOCKER_TAG)
+
+
+.PHONY: trivy-check
+trivy-check:
+
+	@echo "------------------------"
+	@echo "---> Running Trivy Check"
+	@echo "------------------------"
+	@./trivy --exit-code 0 --severity HIGH --no-progress $(DOCKER_REPO)/$(DOCKER_IMAGE):$(DOCKER_TAG)
+	@./trivy --exit-code 0 --severity CRITICAL --no-progress $(DOCKER_REPO)/$(DOCKER_IMAGE):$(DOCKER_TAG)

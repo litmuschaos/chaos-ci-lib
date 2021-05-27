@@ -1,0 +1,81 @@
+---
+name: Push
+on:
+  push:
+    branches:
+      - master
+    tags-ignore:
+      - '**'
+
+env:
+  REPONAME: litmuschaos
+  IMAGENAME: chaos-ci-lib
+  IMAGETAG: ci
+
+jobs:
+  pre-checks:
+    runs-on: ubuntu-latest
+    steps:
+      # Install golang
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.14
+
+      # Checkout to the latest commit
+      # On specific directory/path
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: gofmt check
+        run: |
+          if [ "$(gofmt -s -l . | wc -l)" -ne 0 ]
+          then
+           echo "The following files were found to be not go formatted:"
+           gofmt -s -l .
+           exit 1
+          fi
+      - name: golangci-lint
+        uses: reviewdog/action-golangci-lint@v1
+
+  push:
+    runs-on: ubuntu-latest
+    steps:
+
+      # Install golang
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.14
+
+      - uses: actions/checkout@v2
+
+      - name: Login to GitHub Container Registry
+        run: echo ${{ secrets.DPASS }} | docker login -u ${{ secrets.DNAME }} --password-stdin
+
+      - name: Build Docker Image
+        env:
+          DOCKER_REPO: ${{ env.REPONAME }}
+          DOCKER_IMAGE: go-runner
+          DOCKER_TAG: ${{ env.IMAGETAG }}
+        run: |
+          make build
+
+      - name: Push Docker Image
+        env:
+          DOCKER_REPO: ${{ env.REPONAME }}
+          DOCKER_IMAGE: go-runner
+          DOCKER_TAG: ${{ env.IMAGETAG }}
+        run: |
+          make push
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'docker.io/${{ env.REPONAME }}/${{ env.IMAGENAME }}:${{ env.IMAGETAG }}'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
