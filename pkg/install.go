@@ -1,46 +1,66 @@
 package pkg
 
 import (
-	"bytes"
-	"fmt"
-	"os/exec"
-
+	"github.com/litmuschaos/chaos-ci-lib/pkg/log"
+	"github.com/litmuschaos/chaos-ci-lib/pkg/types"
 	"github.com/pkg/errors"
-	"k8s.io/client-go/kubernetes"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	"k8s.io/klog"
 )
 
-var (
-	err    error
-	out    bytes.Buffer
-	stderr bytes.Buffer
-)
+var err error
 
-// InstallRbac function is for the Rbac Creation for indivisual experiments. we need to pass the address
-// (From the chaos chart) of the Rbac file and the name of experiment and it will create the Rbac
-// for the file.
-func InstallRbac(rbacPath string, rbacNamespace string, experimentName string, client *kubernetes.Clientset) error {
+//InstallRbac installs and configure rbac for running go based chaos
+func InstallRbac(experimentsDetails *types.ExperimentDetails, rbacNamespace string) error {
 
-	//Installing RBAC for the experiment
-	//Fetching RBAC file
-	err = DownloadFile(experimentName+"-sa.yaml", rbacPath)
+	//Fetch RBAC file
+	err = DownloadFile("/tmp/"+experimentsDetails.ExperimentName+"-sa.yaml", experimentsDetails.RbacPath)
 	if err != nil {
-		return errors.Wrapf(err, "Fail to fetch the experiment file, due to %v", err)
+		return errors.Errorf("Fail to fetch the rbac file, due to %v", err)
 	}
 	//Modify Namespace field of the RBAC
-	err = EditFile(experimentName+"-sa.yaml", "namespace: default", "namespace: "+rbacNamespace)
-	if err != nil {
-		return errors.Wrapf(err, "Fail to Modify experiment file, due to %v", err)
+	if rbacNamespace != "" {
+		err = EditFile("/tmp/"+experimentsDetails.ExperimentName+"-sa.yaml", "namespace: default", "namespace: "+rbacNamespace)
+		if err != nil {
+			return errors.Errorf("Fail to Modify rbac file, due to %v", err)
+		}
 	}
-	cmd := exec.Command("kubectl", "apply", "-f", experimentName+"-sa.yaml")
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-	err = cmd.Run()
+	log.Info("[RBAC]: Installing RABC...")
+	//Creating rbac
+	command := []string{"apply", "-f", "/tmp/" + experimentsDetails.ExperimentName + "-sa.yaml", "-n", rbacNamespace}
+	err := Kubectl(command...)
 	if err != nil {
-		fmt.Println(fmt.Sprint(err) + ": " + stderr.String())
-		return errors.Wrapf(err, "Fail to create the file,due to %v", err)
+		return errors.Errorf("fail to apply rbac file, err: %v", err)
 	}
-	klog.Info("Result: " + out.String())
+	log.Info("[RBAC]: Rbac installed successfully !!!")
+
+	return nil
+}
+
+//InstallLitmus installs the latest version of litmus
+func InstallLitmus(testsDetails *types.ExperimentDetails) error {
+
+	log.Info("Installing Litmus ...")
+	if err := DownloadFile("/tmp/install-litmus.yaml", testsDetails.InstallLitmus); err != nil {
+		return errors.Errorf("Fail to fetch litmus operator file, due to %v", err)
+	}
+	log.Info("Updating ChaosOperator Image ...")
+	if err := EditFile("/tmp/install-litmus.yaml", "image: litmuschaos/chaos-operator:latest", "image: "+testsDetails.OperatorImage); err != nil {
+		return errors.Errorf("Unable to update operator image, due to %v", err)
+
+	}
+	if err = EditKeyValue("/tmp/install-litmus.yaml", "  - chaos-operator", "imagePullPolicy: Always", "imagePullPolicy: "+testsDetails.ImagePullPolicy); err != nil {
+		return errors.Errorf("Unable to update image pull policy, due to %v", err)
+	}
+	log.Info("Updating Chaos Runner Image ...")
+	if err := EditKeyValue("/tmp/install-litmus.yaml", "CHAOS_RUNNER_IMAGE", "value: \"litmuschaos/chaos-runner:latest\"", "value: '"+testsDetails.RunnerImage+"'"); err != nil {
+		return errors.Errorf("Unable to update runner image, due to %v", err)
+	}
+	//Creating engine
+	command := []string{"apply", "-f", "/tmp/install-litmus.yaml"}
+	err := Kubectl(command...)
+	if err != nil {
+		return errors.Errorf("fail to apply litmus installation file, err: %v", err)
+	}
+	log.Info("[Info]: Litmus installed successfully !!!")
+
 	return nil
 }
