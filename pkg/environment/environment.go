@@ -30,7 +30,7 @@ func GetENV(experimentDetails *types.ExperimentDetails, expName, engineName stri
 	experimentDetails.ChaosServiceAccount = Getenv("CHAOS_SERVICE_ACCOUNT", expName+"-sa")
 	experimentDetails.Delay, _ = strconv.Atoi(Getenv("DELAY", "5"))
 	experimentDetails.Duration, _ = strconv.Atoi(Getenv("DURATION", "90"))
-	experimentDetails.FillPercentage, _ = strconv.Atoi(Getenv("FILL_PERCENTAGE", "80"))
+	experimentDetails.FillPercentage, _ = strconv.Atoi(Getenv("FILL_PERCENTAGE", "20"))
 	experimentDetails.CpuInjectCommand = Getenv("CPU_KILL_COMMAND", "md5sum /dev/zero")
 	experimentDetails.MemoryConsumption, _ = strconv.Atoi(Getenv("MEMORY_CONSUMPTION", "500"))
 	experimentDetails.FillPercentage, _ = strconv.Atoi(Getenv("MEMORY_PERCENTAGE", "80"))
