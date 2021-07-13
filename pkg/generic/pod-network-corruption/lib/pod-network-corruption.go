@@ -19,7 +19,7 @@ func InstallPodNetworkCorruptionEngine(experimentsDetails *types.ExperimentDetai
 	return nil
 }
 
-// setPodNetworkCorruptionExperimentENV will set the ENVs for disk fill experiment
+// setPodNetworkCorruptionExperimentENV will set the ENVs for pod-network-corruption experiment
 func setPodNetworkCorruptionExperimentENV(experimentsDetails *types.ExperimentDetails) *common.ENVDetails {
 	// contains all the envs
 	envDetails := common.ENVDetails{

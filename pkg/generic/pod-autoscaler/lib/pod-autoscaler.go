@@ -19,7 +19,7 @@ func InstallPodAutoscalerEngine(experimentsDetails *types.ExperimentDetails, cha
 	return nil
 }
 
-// setPodAutoscalerExperimentENV will set the ENVs for disk fill experiment
+// setPodAutoscalerExperimentENV will set the ENVs for pod-autoscaler experiment
 func setPodAutoscalerExperimentENV(experimentsDetails *types.ExperimentDetails) *common.ENVDetails {
 	// contains all the envs
 	envDetails := common.ENVDetails{

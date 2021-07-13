@@ -19,7 +19,7 @@ func InstallNodeMemoryHogEngine(experimentsDetails *types.ExperimentDetails, cha
 	return nil
 }
 
-// setDiskFillExperimentENV will set the ENVs for disk fill experiment
+// setDiskFillExperimentENV will set the ENVs for node-memory-hog experiment
 func setNodeMemoryHogExperimentENV(experimentsDetails *types.ExperimentDetails) *common.ENVDetails {
 	// contains all the envs
 	envDetails := common.ENVDetails{

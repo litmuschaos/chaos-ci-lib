@@ -19,7 +19,7 @@ func InstallPodCPUHogEngine(experimentsDetails *types.ExperimentDetails, chaosEn
 	return nil
 }
 
-// setPodCPUHogExperimentENV will set the ENVs for disk fill experiment
+// setPodCPUHogExperimentENV will set the ENVs for pod-cpu-hog experiment
 func setPodCPUHogExperimentENV(experimentsDetails *types.ExperimentDetails) *common.ENVDetails {
 	// contains all the envs
 	envDetails := common.ENVDetails{

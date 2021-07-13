@@ -19,7 +19,7 @@ func InstallPodNetworkLatencyEngine(experimentsDetails *types.ExperimentDetails,
 	return nil
 }
 
-// setPodNetworkLatencyExperimentENV will set the ENVs for disk fill experiment
+// setPodNetworkLatencyExperimentENV will set the ENVs for pod-network-latency experiment
 func setPodNetworkLatencyExperimentENV(experimentsDetails *types.ExperimentDetails) *common.ENVDetails {
 	// contains all the envs
 	envDetails := common.ENVDetails{

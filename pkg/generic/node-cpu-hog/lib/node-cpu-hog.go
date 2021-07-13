@@ -19,7 +19,7 @@ func InstallNodeCPUHogEngine(experimentsDetails *types.ExperimentDetails, chaosE
 	return nil
 }
 
-// setDiskFillExperimentENV will set the ENVs for disk fill experiment
+// setDiskFillExperimentENV will set the ENVs for node-cpu-hog experiment
 func setNodeCPUHogExperimentENV(experimentsDetails *types.ExperimentDetails) *common.ENVDetails {
 	// contains all the envs
 	envDetails := common.ENVDetails{

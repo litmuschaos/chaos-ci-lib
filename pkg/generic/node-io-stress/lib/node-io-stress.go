@@ -19,7 +19,7 @@ func InstallNodeIOStressEngine(experimentsDetails *types.ExperimentDetails, chao
 	return nil
 }
 
-// setNodeIOStressExperimentENV will set the ENVs for disk fill experiment
+// setNodeIOStressExperimentENV will set the ENVs for node-io-stress experiment
 func setNodeIOStressExperimentENV(experimentsDetails *types.ExperimentDetails) *common.ENVDetails {
 	// contains all the envs
 	envDetails := common.ENVDetails{

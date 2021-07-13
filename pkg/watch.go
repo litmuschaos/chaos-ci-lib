@@ -26,7 +26,7 @@ func ChaosPodLogs(experimentsDetails *types.ExperimentDetails, clients environme
 		return errors.Errorf("fail to get uid from experiment label,err: %v", err)
 	}
 	if err = printHelperPodLogs(experimentsDetails.ExperimentName, experimentsDetails.ChaosNamespace, uid, experimentsDetails.JobCleanUpPolicy, clients); err != nil {
-		return errors.Errorf("fail to get the helper pod", err)
+		return errors.Errorf("fail to get the helper pod, err: %v", err)
 	}
 	return nil
 }
@@ -91,7 +91,7 @@ func getPodLogs(podName, namespace string, clients environment.ClientSets) error
 	req := clients.KubeClient.CoreV1().Pods(namespace).GetLogs(podName, &v1.PodLogOptions{})
 	readCloser, err := req.Stream()
 	if err != nil {
-		errors.Errorf("fail to print the logs of %v pod", podName, err)
+		return errors.Errorf("fail to print the logs of %v pod, err: %v", podName, err)
 	}
 	buf := new(bytes.Buffer)
 	_, err = io.Copy(buf, readCloser)

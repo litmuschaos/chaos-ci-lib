@@ -85,7 +85,7 @@ func CreateChaosResource(fileData []byte, namespace string, clients environment.
 			} else {
 				// Updating present resource
 				log.Infof("[Status]: Updating %v", unstructuredObj.GetKind())
-				dri.Update(unstructuredObj, v1.UpdateOptions{})
+				_, _ = dri.Update(unstructuredObj, v1.UpdateOptions{})
 			}
 		}
 	}
@@ -129,7 +129,7 @@ func InstallChaosEngine(experimentsDetails *types.ExperimentDetails, chaosEngine
 	//Fetch Engine file
 	res, err := http.Get(experimentsDetails.EnginePath)
 	if err != nil {
-		return errors.Errorf("Fail to fetch the rbac file, due to %v", err)
+		return errors.Errorf("Fail to fetch the engine file, due to %v", err)
 	}
 
 	// ReadAll reads from response until an error or EOF and returns the data it read.

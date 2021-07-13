@@ -19,7 +19,7 @@ func InstallPodNetworkLossEngine(experimentsDetails *types.ExperimentDetails, ch
 	return nil
 }
 
-// setPodNetworkLossExperimentENV will set the ENVs for disk fill experiment
+// setPodNetworkLossExperimentENV will set the ENVs for pod-network-loss experiment
 func setPodNetworkLossExperimentENV(experimentsDetails *types.ExperimentDetails) *common.ENVDetails {
 	// contains all the envs
 	envDetails := common.ENVDetails{

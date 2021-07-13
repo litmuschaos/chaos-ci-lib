@@ -19,7 +19,7 @@ func InstallPodMemoryHogEngine(experimentsDetails *types.ExperimentDetails, chao
 	return nil
 }
 
-// setPodMemoryHogExperimentENV will set the ENVs for disk fill experiment
+// setPodMemoryHogExperimentENV will set the ENVs for pod-memory-hog experiment
 func setPodMemoryHogExperimentENV(experimentsDetails *types.ExperimentDetails) *common.ENVDetails {
 	// contains all the envs
 	envDetails := common.ENVDetails{

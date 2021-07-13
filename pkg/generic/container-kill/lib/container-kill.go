@@ -19,7 +19,7 @@ func InstallContainerKillEngine(experimentsDetails *types.ExperimentDetails, cha
 	return nil
 }
 
-// setContainerKillExperimentENV ...
+// setContainerKillExperimentENV will set the ENVs for container-kill experiment
 func setContainerKillExperimentENV(experimentsDetails *types.ExperimentDetails) *common.ENVDetails {
 	// contains all the envs
 	envDetails := common.ENVDetails{

@@ -19,7 +19,7 @@ func InstallPodDeleteEngine(experimentsDetails *types.ExperimentDetails, chaosEn
 	return nil
 }
 
-// setPodDeleteExperimentENV will set the ENVs for disk fill experiment
+// setPodDeleteExperimentENV will set the ENVs for pod-delete experiment
 func setPodDeleteExperimentENV(experimentsDetails *types.ExperimentDetails) *common.ENVDetails {
 	// contains all the envs
 	envDetails := common.ENVDetails{

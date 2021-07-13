@@ -35,7 +35,7 @@ func GetENV(experimentDetails *types.ExperimentDetails, expName, engineName stri
 	experimentDetails.MemoryConsumption, _ = strconv.Atoi(Getenv("MEMORY_CONSUMPTION", "500"))
 	experimentDetails.FillPercentage, _ = strconv.Atoi(Getenv("MEMORY_PERCENTAGE", "80"))
 	experimentDetails.ContainerRuntime = Getenv("CONTAINER_RUNTIME", "containerd")
-	experimentDetails.ContainerPath = Getenv("CONTAINER_PATH", "/var/lib/containerd/io.containerd.runtime.v1.linux/k8s.io")
+	experimentDetails.ContainerPath = Getenv("CONTAINER_PATH", "/var/lib/containerd/io.containerd.grpc.v1.cri/containers/")
 	experimentDetails.SocketPath = Getenv("SOCKET_PATH", "/run/containerd/containerd.sock")
 	experimentDetails.MemoryConsumptionPercentage, _ = strconv.Atoi(Getenv("MEMORY_CONSUMPTION_PERCENTAGE", "30"))
 	experimentDetails.NetworkInterface = Getenv("NETWORK_INTERFACE", "eth0")

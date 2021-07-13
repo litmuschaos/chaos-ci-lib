@@ -19,7 +19,7 @@ func InstallPodNetworkDuplicationEngine(experimentsDetails *types.ExperimentDeta
 	return nil
 }
 
-// setPodNetworkDuplicationExperimentENV will set the ENVs for disk fill experiment
+// setPodNetworkDuplicationExperimentENV will set the ENVs for pod-network-duplication experiment
 func setPodNetworkDuplicationExperimentENV(experimentsDetails *types.ExperimentDetails) *common.ENVDetails {
 	// contains all the envs
 	envDetails := common.ENVDetails{
