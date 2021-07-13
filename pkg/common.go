@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"os/exec"
 
+	"github.com/litmuschaos/chaos-ci-lib/pkg/environment"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/log"
+	"github.com/pkg/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
 
@@ -24,6 +27,16 @@ func Kubectl(command ...string) error {
 	}
 	klog.Infof("%v", out.String())
 	return nil
+}
+
+// GetUID will return the uid from chaosengine
+func GetUID(engineName, namespace string, clients environment.ClientSets) (string, error) {
+
+	chaosEngine, err := clients.LitmusClient.ChaosEngines(namespace).Get(engineName, metav1.GetOptions{})
+	if err != nil {
+		return "", errors.Errorf("fail to get the chaosengine %v err: %v", engineName, err)
+	}
+	return string(chaosEngine.UID), nil
 }
 
 // ENVDetails contains the ENV details
