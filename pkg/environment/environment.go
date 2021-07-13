@@ -16,7 +16,7 @@ func GetENV(experimentDetails *types.ExperimentDetails, expName, engineName stri
 	experimentDetails.AppNS = Getenv("APP_NS", "default")
 	experimentDetails.AppLabel = Getenv("APP_LABEL", "app=nginx")
 	experimentDetails.AppKind = Getenv("APP_KIND", "deployment")
-	experimentDetails.JobCleanUpPolicy = Getenv("JOB_CLEANUP_POLICY", "'retain'")
+	experimentDetails.JobCleanUpPolicy = Getenv("JOB_CLEANUP_POLICY", "retain")
 	experimentDetails.AnnotationCheck = Getenv("ANNOTATION_CHECK", "false")
 	experimentDetails.ApplicationNodeName = Getenv("APPLICATION_NODE_NAME", "")
 	experimentDetails.NodeSelectorName = Getenv("APPLICATION_NODE_NAME", "")
@@ -41,6 +41,11 @@ func GetENV(experimentDetails *types.ExperimentDetails, expName, engineName stri
 	experimentDetails.NetworkPacketDuplicationPercentage, _ = strconv.Atoi(Getenv("NETWORK_PACKET_DUPLICATION_PERCENTAGE", "100"))
 	experimentDetails.FileSystemUtilizationPercentage, _ = strconv.Atoi(Getenv("FILESYSTEM_UTILIZATION_PERCENTAGE", "10"))
 	experimentDetails.NetworkPacketLossPercentage, _ = strconv.Atoi(Getenv("NETWORK_PACKET_LOSS_PERCENTAGE", "100"))
+	experimentDetails.TargetPods = Getenv("TARGET_PODS", "")
+	experimentDetails.PodsAffectedPerc, _ = strconv.Atoi(Getenv("PODS_AFFECTED_PERC", "0"))
+	experimentDetails.NodesAffectedPerc, _ = strconv.Atoi(Getenv("NODES_AFFECTED_PERC", "0"))
+	experimentDetails.FilesystemUtilizationBytes, _ = strconv.Atoi(Getenv("FILESYSTEM_UTILIZATION_BYTES", ""))
+	experimentDetails.Replicas, _ = strconv.Atoi(Getenv("REPLICA_COUNT", "0"))
 
 	//All Images for running chaos test
 	experimentDetails.GoExperimentImage = Getenv("EXPERIMENT_IMAGE", "litmuschaos/go-runner:ci")

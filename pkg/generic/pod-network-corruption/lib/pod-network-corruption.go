@@ -2,44 +2,35 @@ package lib
 
 import (
 	"strconv"
-	"time"
 
-	"github.com/litmuschaos/chaos-ci-lib/pkg"
-	"github.com/litmuschaos/chaos-ci-lib/pkg/log"
+	common "github.com/litmuschaos/chaos-ci-lib/pkg"
+	"github.com/litmuschaos/chaos-ci-lib/pkg/environment"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/types"
-	"github.com/pkg/errors"
+	"github.com/litmuschaos/chaos-operator/pkg/apis/litmuschaos/v1alpha1"
 )
 
-var err error
-
 //InstallPodNetworkCorruptionEngine installs the given chaosengine for the experiment
-func InstallPodNetworkCorruptionEngine(experimentsDetails *types.ExperimentDetails) error {
+func InstallPodNetworkCorruptionEngine(experimentsDetails *types.ExperimentDetails, chaosEngine *v1alpha1.ChaosEngine, clients environment.ClientSets) error {
 
-	if err = pkg.ModifyEngineSpec(experimentsDetails, true); err != nil {
-		return errors.Errorf("Fail to Update the engine file, due to %v", err)
+	experimentENV := setPodNetworkCorruptionExperimentENV(experimentsDetails)
+	if err := common.InstallChaosEngine(experimentsDetails, chaosEngine, experimentENV, clients); err != nil {
+		return err
 	}
-	//Modify ENVs
-	if err = pkg.EditKeyValue("/tmp/"+experimentsDetails.ExperimentName+"-ce.yaml", "TOTAL_CHAOS_DURATION", "value: '60'", "value: '"+strconv.Itoa(experimentsDetails.ChaosDuration)+"'"); err != nil {
-		return errors.Errorf("Fail to Update the engine file, due to %v", err)
-	}
-	if err = pkg.EditKeyValue("/tmp/"+experimentsDetails.ExperimentName+"-ce.yaml", "NETWORK_INTERFACE", "value: 'eth0'", "value: '"+experimentsDetails.NetworkInterface+"'"); err != nil {
-		return errors.Errorf("Fail to Update the engine file, due to %v", err)
-	}
-	if err = pkg.EditKeyValue("/tmp/"+experimentsDetails.ExperimentName+"-ce.yaml", "CONTAINER_RUNTIME", "value: 'docker'", "value: '"+experimentsDetails.ContainerRuntime+"'"); err != nil {
-		return errors.Errorf("Fail to Update the engine file, due to %v", err)
-	}
-	if err = pkg.EditKeyValue("/tmp/"+experimentsDetails.ExperimentName+"-ce.yaml", "SOCKET_PATH", "value: '/var/run/docker.sock'", "value: '"+experimentsDetails.SocketPath+"'"); err != nil {
-		return errors.Errorf("Fail to Update the engine file, due to %v", err)
-	}
-	log.Info("[Engine]: Installing ChaosEngine...")
-	//Creating engine
-	command := []string{"apply", "-f", "/tmp/" + experimentsDetails.ExperimentName + "-ce.yaml", "-n", experimentsDetails.ChaosNamespace}
-	err := pkg.Kubectl(command...)
-	if err != nil {
-		return errors.Errorf("fail to apply engine file, err: %v", err)
-	}
-	log.Info("[Engine]: ChaosEngine Installed Successfully !!!")
-	time.Sleep(2 * time.Second)
-
 	return nil
+}
+
+// setPodNetworkCorruptionExperimentENV will set the ENVs for disk fill experiment
+func setPodNetworkCorruptionExperimentENV(experimentsDetails *types.ExperimentDetails) *common.ENVDetails {
+	// contains all the envs
+	envDetails := common.ENVDetails{
+		ENV: map[string]string{},
+	}
+	// Add Experiment ENV's
+	envDetails.SetEnv("CONTAINER_RUNTIME", experimentsDetails.ContainerRuntime).
+		SetEnv("SOCKET_PATH", experimentsDetails.SocketPath).
+		SetEnv("TARGET_PODS", experimentsDetails.TargetPods).
+		SetEnv("PODS_AFFECTED_PERC", strconv.Itoa(experimentsDetails.PodsAffectedPerc)).
+		SetEnv("NETWORK_INTERFACE", experimentsDetails.NetworkInterface)
+
+	return &envDetails
 }

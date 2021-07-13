@@ -35,9 +35,14 @@ type ExperimentDetails struct {
 	SocketPath                         string
 	NetworkPacketDuplicationPercentage int
 	FileSystemUtilizationPercentage    int
+	FilesystemUtilizationBytes         int
 	NetworkPacketLossPercentage        int
 	OperatorImage                      string
 	RunnerImage                        string
 	InstallLitmus                      string
 	MemoryConsumptionPercentage        int
+	TargetPods                         string
+	PodsAffectedPerc                   int
+	NodesAffectedPerc                  int
+	Replicas                           int
 }

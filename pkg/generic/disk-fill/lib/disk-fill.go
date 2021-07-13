@@ -2,38 +2,34 @@ package lib
 
 import (
 	"strconv"
-	"time"
 
-	"github.com/litmuschaos/chaos-ci-lib/pkg"
-	"github.com/litmuschaos/chaos-ci-lib/pkg/log"
+	common "github.com/litmuschaos/chaos-ci-lib/pkg"
+	"github.com/litmuschaos/chaos-ci-lib/pkg/environment"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/types"
-	"github.com/pkg/errors"
+	"github.com/litmuschaos/chaos-operator/pkg/apis/litmuschaos/v1alpha1"
 )
 
-var err error
-
 //InstallDiskFillEngine installs the given chaosengine for the experiment
-func InstallDiskFillEngine(experimentsDetails *types.ExperimentDetails) error {
+func InstallDiskFillEngine(experimentsDetails *types.ExperimentDetails, chaosEngine *v1alpha1.ChaosEngine, clients environment.ClientSets) error {
 
-	if err = pkg.ModifyEngineSpec(experimentsDetails, true); err != nil {
-		return errors.Errorf("Fail to Update the engine file, due to %v", err)
+	experimentENV := setDiskFillExperimentENV(experimentsDetails)
+	if err := common.InstallChaosEngine(experimentsDetails, chaosEngine, experimentENV, clients); err != nil {
+		return err
 	}
-	//Modify ENVs
-	if err = pkg.EditKeyValue("/tmp/"+experimentsDetails.ExperimentName+"-ce.yaml", "FILL_PERCENTAGE", "value: '80'", "value: '"+strconv.Itoa(experimentsDetails.FillPercentage)+"'"); err != nil {
-		return errors.Errorf("Fail to Update the engine file, due to %v", err)
-	}
-	if err = pkg.EditKeyValue("/tmp/"+experimentsDetails.ExperimentName+"-ce.yaml", "TARGET_CONTAINER", "value: 'nginx'", "value: '"+experimentsDetails.TargetContainer+"'"); err != nil {
-		log.Warnf("Fail to Update the engine file, due to %v", err)
-	}
-	log.Info("[Engine]: Installing ChaosEngine...")
-	//Creating engine
-	command := []string{"apply", "-f", "/tmp/" + experimentsDetails.ExperimentName + "-ce.yaml", "-n", experimentsDetails.ChaosNamespace}
-	err := pkg.Kubectl(command...)
-	if err != nil {
-		return errors.Errorf("fail to apply engine file, err: %v", err)
-	}
-	log.Info("[Engine]: ChaosEngine Installed Successfully !!!")
-	time.Sleep(2 * time.Second)
-
 	return nil
+}
+
+// setDiskFillExperimentENV will set the ENVs for disk fill experiment
+func setDiskFillExperimentENV(experimentsDetails *types.ExperimentDetails) *common.ENVDetails {
+	// contains all the envs
+	envDetails := common.ENVDetails{
+		ENV: map[string]string{},
+	}
+	// Add Experiment ENV's
+	envDetails.SetEnv("FILL_PERCENTAGE", strconv.Itoa(experimentsDetails.FillPercentage)).
+		SetEnv("TARGET_CONTAINER", experimentsDetails.TargetContainer).
+		SetEnv("TARGET_PODS", experimentsDetails.TargetPods).
+		SetEnv("PODS_AFFECTED_PERC", strconv.Itoa(experimentsDetails.PodsAffectedPerc))
+
+	return &envDetails
 }

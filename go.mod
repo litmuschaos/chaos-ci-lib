@@ -5,9 +5,9 @@ go 1.14
 replace gopkg.in/fsnotify.v1 v1.4.8 => github.com/fsnotify/fsnotify v1.4.8
 
 require (
-	cloud.google.com/go v0.54.0 // indirect
-	github.com/googleapis/gnostic v0.4.0 // indirect
+	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/litmuschaos/chaos-operator v0.0.0-20210430184607-cb675e58922d
+	github.com/litmuschaos/litmus-e2e v0.0.0-20210713061120-32af01dc2757
 	github.com/litmuschaos/litmus-go v0.0.0-20210430161537-788b26f5b445
 	github.com/onsi/ginkgo v1.16.2
 	github.com/onsi/gomega v1.12.0
