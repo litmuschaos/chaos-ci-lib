@@ -26,12 +26,14 @@ type ExperimentDetails struct {
 	Delay                              int
 	Duration                           int
 	TargetContainer                    string
+	DiskFillPercentage                 int
 	FillPercentage                     int
 	MemoryConsumption                  int
 	NodeCPUCore                        int
 	NetworkLatency                     string
 	NetworkInterface                   string
 	ContainerRuntime                   string
+	ContainerPath                      string
 	SocketPath                         string
 	NetworkPacketDuplicationPercentage int
 	FileSystemUtilizationPercentage    int

@@ -26,9 +26,10 @@ func setDiskFillExperimentENV(experimentsDetails *types.ExperimentDetails) *comm
 		ENV: map[string]string{},
 	}
 	// Add Experiment ENV's
-	envDetails.SetEnv("FILL_PERCENTAGE", strconv.Itoa(experimentsDetails.FillPercentage)).
+	envDetails.SetEnv("FILL_PERCENTAGE", strconv.Itoa(experimentsDetails.DiskFillPercentage)).
 		SetEnv("TARGET_CONTAINER", experimentsDetails.TargetContainer).
 		SetEnv("TARGET_PODS", experimentsDetails.TargetPods).
+		SetEnv("CONTAINER_PATH", experimentsDetails.ContainerPath).
 		SetEnv("PODS_AFFECTED_PERC", strconv.Itoa(experimentsDetails.PodsAffectedPerc))
 
 	return &envDetails
