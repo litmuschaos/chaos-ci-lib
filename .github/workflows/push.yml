@@ -54,7 +54,7 @@ jobs:
       - name: Build Docker Image
         env:
           DOCKER_REPO: ${{ env.REPONAME }}
-          DOCKER_IMAGE: go-runner
+          DOCKER_IMAGE: ${{ env.IMAGENAME }}
           DOCKER_TAG: ${{ env.IMAGETAG }}
         run: |
           make build
@@ -62,7 +62,7 @@ jobs:
       - name: Push Docker Image
         env:
           DOCKER_REPO: ${{ env.REPONAME }}
-          DOCKER_IMAGE: go-runner
+          DOCKER_IMAGE: ${{ env.IMAGENAME }}
           DOCKER_TAG: ${{ env.IMAGETAG }}
         run: |
           make push
