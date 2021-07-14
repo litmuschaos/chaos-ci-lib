@@ -8,6 +8,7 @@ import (
 	engine "github.com/litmuschaos/chaos-ci-lib/pkg/generic/pod-network-duplication/lib"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/log"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/types"
+	"github.com/litmuschaos/chaos-operator/pkg/apis/litmuschaos/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -27,6 +28,7 @@ var _ = Describe("BDD of running pod-network-duplication experiment", func() {
 
 			experimentsDetails := types.ExperimentDetails{}
 			clients := environment.ClientSets{}
+			chaosEngine := v1alpha1.ChaosEngine{}
 
 			//Getting kubeConfig and Generate ClientSets
 			By("[PreChaos]: Getting kubeconfig and generate clientset")
@@ -45,12 +47,12 @@ var _ = Describe("BDD of running pod-network-duplication experiment", func() {
 
 			// Install ChaosEngine for experiment Execution
 			By("[Prepare]: Prepare and install ChaosEngine")
-			err = engine.InstallPodNetworkDuplicationEngine(&experimentsDetails)
+			err = engine.InstallPodNetworkDuplicationEngine(&experimentsDetails, &chaosEngine, clients)
 			Expect(err).To(BeNil(), "fail to install chaosengine, due to {%v}", err)
 
 			//Checking runner pod running state
 			By("[Status]: Runner pod running status check")
-			_, err = pkg.RunnerPodStatus(&experimentsDetails, experimentsDetails.AppNS, clients)
+			err = pkg.RunnerPodStatus(&experimentsDetails, experimentsDetails.AppNS, clients)
 			Expect(err).To(BeNil(), "Runner pod status check failed, due to {%v}", err)
 
 			//Chaos pod running status check
