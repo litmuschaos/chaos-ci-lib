@@ -2,41 +2,33 @@ package lib
 
 import (
 	"strconv"
-	"time"
 
-	"github.com/litmuschaos/chaos-ci-lib/pkg"
-	"github.com/litmuschaos/chaos-ci-lib/pkg/log"
+	common "github.com/litmuschaos/chaos-ci-lib/pkg"
+	"github.com/litmuschaos/chaos-ci-lib/pkg/environment"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/types"
-	"github.com/pkg/errors"
+	"github.com/litmuschaos/chaos-operator/pkg/apis/litmuschaos/v1alpha1"
 )
 
-var err error
-
 //InstallPodDeleteEngine installs the given chaosengine for the experiment
-func InstallPodDeleteEngine(experimentsDetails *types.ExperimentDetails) error {
+func InstallPodDeleteEngine(experimentsDetails *types.ExperimentDetails, chaosEngine *v1alpha1.ChaosEngine, clients environment.ClientSets) error {
 
-	if err = pkg.ModifyEngineSpec(experimentsDetails, true); err != nil {
-		return errors.Errorf("Fail to Update the engine file, due to %v", err)
+	experimentENV := setPodDeleteExperimentENV(experimentsDetails)
+	if err := common.InstallChaosEngine(experimentsDetails, chaosEngine, experimentENV, clients); err != nil {
+		return err
 	}
-	//Modify ENVs
-	if err = pkg.EditKeyValue("/tmp/"+experimentsDetails.ExperimentName+"-ce.yaml", "TOTAL_CHAOS_DURATION", "value: '30'", "value: '"+strconv.Itoa(experimentsDetails.ChaosDuration)+"'"); err != nil {
-		return errors.Errorf("Fail to Update the engine file, due to %v", err)
-	}
-	if err = pkg.EditKeyValue("/tmp/"+experimentsDetails.ExperimentName+"-ce.yaml", "CHAOS_INTERVAL", "value: '10'", "value: '"+strconv.Itoa(experimentsDetails.ChaosInterval)+"'"); err != nil {
-		return errors.Errorf("Fail to Update the engine file, due to %v", err)
-	}
-	if err = pkg.EditKeyValue("/tmp/"+experimentsDetails.ExperimentName+"-ce.yaml", "FORCE", "value: 'false'", "value: '"+experimentsDetails.Force+"'"); err != nil {
-		return errors.Errorf("Fail to Update the engine file, due to %v", err)
-	}
-	log.Info("[Engine]: Installing ChaosEngine...")
-	//Creating engine
-	command := []string{"apply", "-f", "/tmp/" + experimentsDetails.ExperimentName + "-ce.yaml", "-n", experimentsDetails.ChaosNamespace}
-	err := pkg.Kubectl(command...)
-	if err != nil {
-		return errors.Errorf("fail to apply engine file, err: %v", err)
-	}
-	log.Info("[Engine]: ChaosEngine Installed Successfully !!!")
-	time.Sleep(2 * time.Second)
-
 	return nil
+}
+
+// setPodDeleteExperimentENV will set the ENVs for pod-delete experiment
+func setPodDeleteExperimentENV(experimentsDetails *types.ExperimentDetails) *common.ENVDetails {
+	// contains all the envs
+	envDetails := common.ENVDetails{
+		ENV: map[string]string{},
+	}
+	// Add Experiment ENV's
+	envDetails.SetEnv("FORCE", experimentsDetails.Force).
+		SetEnv("TARGET_PODS", experimentsDetails.TargetPods).
+		SetEnv("PODS_AFFECTED_PERC", strconv.Itoa(experimentsDetails.PodsAffectedPerc))
+
+	return &envDetails
 }

@@ -26,18 +26,25 @@ type ExperimentDetails struct {
 	Delay                              int
 	Duration                           int
 	TargetContainer                    string
+	DiskFillPercentage                 int
 	FillPercentage                     int
 	MemoryConsumption                  int
 	NodeCPUCore                        int
 	NetworkLatency                     string
 	NetworkInterface                   string
 	ContainerRuntime                   string
+	ContainerPath                      string
 	SocketPath                         string
 	NetworkPacketDuplicationPercentage int
 	FileSystemUtilizationPercentage    int
+	FilesystemUtilizationBytes         int
 	NetworkPacketLossPercentage        int
 	OperatorImage                      string
 	RunnerImage                        string
 	InstallLitmus                      string
 	MemoryConsumptionPercentage        int
+	TargetPods                         string
+	PodsAffectedPerc                   int
+	NodesAffectedPerc                  int
+	Replicas                           int
 }
