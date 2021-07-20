@@ -2,7 +2,7 @@ name: E2E-chaos-ci-lib
 on:
   workflow_dispatch:
   pull_request:
-    branches: [master]
+    branches: [v0.4.x]
     types: [opened, synchronize, reopened]
     paths-ignore:
       - '**.md'

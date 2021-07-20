@@ -212,7 +212,7 @@ func InstallLitmus(testsDetails *types.ExperimentDetails) error {
 		return errors.Errorf("Fail to fetch litmus operator file, due to %v", err)
 	}
 	log.Info("Updating ChaosOperator Image ...")
-	if err := EditFile("/tmp/install-litmus.yaml", "image: litmuschaos/chaos-operator:latest", "image: "+testsDetails.OperatorImage); err != nil {
+	if err := EditFile("/tmp/install-litmus.yaml", "image: litmuschaos/chaos-operator:ci", "image: "+testsDetails.OperatorImage); err != nil {
 		return errors.Errorf("Unable to update operator image, due to %v", err)
 
 	}
@@ -220,7 +220,7 @@ func InstallLitmus(testsDetails *types.ExperimentDetails) error {
 		return errors.Errorf("Unable to update image pull policy, due to %v", err)
 	}
 	log.Info("Updating Chaos Runner Image ...")
-	if err := EditKeyValue("/tmp/install-litmus.yaml", "CHAOS_RUNNER_IMAGE", "value: \"litmuschaos/chaos-runner:latest\"", "value: '"+testsDetails.RunnerImage+"'"); err != nil {
+	if err := EditKeyValue("/tmp/install-litmus.yaml", "CHAOS_RUNNER_IMAGE", "value: \"litmuschaos/chaos-runner:ci\"", "value: '"+testsDetails.RunnerImage+"'"); err != nil {
 		return errors.Errorf("Unable to update runner image, due to %v", err)
 	}
 	//Creating engine

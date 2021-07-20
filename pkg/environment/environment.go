@@ -54,9 +54,9 @@ func GetENV(experimentDetails *types.ExperimentDetails, expName, engineName stri
 	experimentDetails.RunnerImage = Getenv("RUNNER_IMAGE", "litmuschaos/chaos-runner:ci")
 
 	// All Links for running chaos testing
-	experimentDetails.RbacPath = Getenv("RBAC_PATH", "https://hub.litmuschaos.io/api/chaos/master?file=charts/generic/"+expName+"/rbac.yaml")
-	experimentDetails.EnginePath = Getenv("ENGINE_PATH", "https://hub.litmuschaos.io/api/chaos/master?file=charts/generic/"+expName+"/engine.yaml")
-	experimentDetails.InstallLitmus = Getenv("INSTALL_LITMUS_URL", "https://litmuschaos.github.io/litmus/litmus-operator-latest.yaml")
+	experimentDetails.RbacPath = Getenv("RBAC_PATH", "https://hub.litmuschaos.io/api/chaos/1.13.8?file=charts/generic/"+expName+"/rbac.yaml")
+	experimentDetails.EnginePath = Getenv("ENGINE_PATH", "https://hub.litmuschaos.io/api/chaos/1.13.8?file=charts/generic/"+expName+"/engine.yaml")
+	experimentDetails.InstallLitmus = Getenv("INSTALL_LITMUS_URL", "https://litmuschaos.github.io/litmus/litmus-operator-ci.yaml")
 
 }
 

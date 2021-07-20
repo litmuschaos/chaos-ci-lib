@@ -27,4 +27,3 @@ spec:
             ephemeral-storage: "1Gi"
           limits:
             ephemeral-storage: "2Gi"
-            
