@@ -52,7 +52,10 @@ var _ = Describe("BDD of running node-memory-hog experiment", func() {
 
 			//Checking runner pod running state
 			By("[Status]: Runner pod running status check")
-			err = pkg.RunnerPodStatus(&experimentsDetails, experimentsDetails.AppNS, clients)
+						err = pkg.RunnerPodStatus(&experimentsDetails, chaosEngine.Namespace, clients)
+			if err != nil && chaosEngine.Namespace != experimentsDetails.AppNS {
+				err = pkg.RunnerPodStatus(&experimentsDetails, chaosEngine.Namespace, clients)
+			}
 			Expect(err).To(BeNil(), "Runner pod status check failed, due to {%v}", err)
 
 			//Chaos pod running status check
