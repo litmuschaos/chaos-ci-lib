@@ -1,0 +1,438 @@
+name: E2E-chaos-ci-lib
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [v0.4.x]
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**.md'
+      
+jobs:
+  Container-Kill_Test:
+    runs-on: ubuntu-latest
+    env:
+      KUBECONFIG: /home/runner/.kube/config 
+    steps:
+      
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}    
+
+      #Install and configure a kind cluster
+      - name: Installing KinD cluster for the test
+        run: kind create cluster
+
+      - name: Configuring and testing the Installation
+        run: |
+          kubectl wait node --all --for condition=ready --timeout=120s
+          kubectl get nodes 
+
+      - name: Deploy a sample application for chaos injection
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+
+      - name: Install Litmus
+        run: make install
+
+      - name: Run container-kill experiment
+        run: make container-kill
+
+      - name: Uninstall litmus
+        run: make uninstall
+      
+  Disk-Fill_Test:
+    runs-on: ubuntu-latest
+    env:
+      KUBECONFIG: /home/runner/.kube/config
+    steps:
+      
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}    
+
+      #Install and configure a kind cluster
+      - name: Installing KinD cluster for the test
+        run: kind create cluster
+
+      - name: Configuring and testing the Installation
+        run: |
+          kubectl wait node --all --for condition=ready --timeout=120s
+          kubectl get nodes 
+
+      - name: Deploy a sample application for chaos injection
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+
+      - name: Install Litmus
+        run: make install
+
+      - name: Run disk-fill experiment
+        run: make disk-fill
+
+      - name: Uninstall litmus
+        run: make uninstall
+
+  Node_CPU_Hog_Test:
+    runs-on: ubuntu-latest
+    env:
+      KUBECONFIG: /home/runner/.kube/config
+    steps:
+      
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}    
+
+      #Install and configure a kind cluster
+      - name: Installing KinD cluster for the test
+        run: kind create cluster
+
+      - name: Configuring and testing the Installation
+        run: |
+          kubectl wait node --all --for condition=ready --timeout=120s
+          kubectl get nodes 
+
+      - name: Deploy a sample application for chaos injection
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+
+      - name: Install Litmus
+        run: make install
+
+      - name: Run node-cpu-hog experiment
+        run: make node-cpu-hog
+
+      - name: Uninstall litmus
+        run: make uninstall           
+        
+  Node_IO_Stress_Test:
+    runs-on: ubuntu-latest
+    env:
+      KUBECONFIG: /home/runner/.kube/config
+    steps:
+      
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}    
+
+      #Install and configure a kind cluster
+      - name: Installing KinD cluster for the test
+        run: kind create cluster
+
+      - name: Configuring and testing the Installation
+        run: |
+          kubectl wait node --all --for condition=ready --timeout=120s
+          kubectl get nodes 
+
+      - name: Deploy a sample application for chaos injection
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+
+      - name: Install Litmus
+        run: make install
+
+      - name: Run node-io-stress experiment
+        run: make node-io-stress
+
+      - name: Uninstall litmus
+        run: make uninstall
+
+  Node_Memory_Hog_Test:
+    runs-on: ubuntu-latest
+    env:
+      KUBECONFIG: /home/runner/.kube/config
+    steps:
+      
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}    
+
+      #Install and configure a kind cluster
+      - name: Installing KinD cluster for the test
+        run: kind create cluster
+
+      - name: Configuring and testing the Installation
+        run: |
+          kubectl wait node --all --for condition=ready --timeout=120s
+          kubectl get nodes 
+
+      - name: Deploy a sample application for chaos injection
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+
+      - name: Install Litmus
+        run: make install
+
+      - name: Run node-memory-hog experiment
+        run: make node-memory-hog
+
+      - name: Uninstall litmus
+        run: make uninstall        
+          
+  Pod_Autoscaler_Test:
+    runs-on: ubuntu-latest
+    env:
+      KUBECONFIG: /home/runner/.kube/config
+    steps:
+      
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}    
+
+      #Install and configure a kind cluster
+      - name: Installing KinD cluster for the test
+        run: kind create cluster
+
+      - name: Configuring and testing the Installation
+        run: |
+          kubectl wait node --all --for condition=ready --timeout=120s
+          kubectl get nodes 
+
+      - name: Deploy a sample application for chaos injection
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+
+      - name: Install Litmus
+        run: make install
+
+      - name: Run pod-autoscaler experiment
+        run: make pod-autoscaler
+
+      - name: Uninstall litmus
+        run: make uninstall     
+
+  Pod_CPU_Hog_Test:
+    runs-on: ubuntu-latest
+    env:
+      KUBECONFIG: /home/runner/.kube/config
+    steps:
+      
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}    
+
+      #Install and configure a kind cluster
+      - name: Installing KinD cluster for the test
+        run: kind create cluster
+
+      - name: Configuring and testing the Installation
+        run: |
+          kubectl wait node --all --for condition=ready --timeout=120s
+          kubectl get nodes 
+
+      - name: Deploy a sample application for chaos injection
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+
+      - name: Install Litmus
+        run: make install
+
+      - name: Run pod-cpu-hog experiment
+        run: make pod-cpu-hog
+
+      - name: Uninstall litmus
+        run: make uninstall     
+
+  Pod_Delete_Test:
+    runs-on: ubuntu-latest
+    env:
+      KUBECONFIG: /home/runner/.kube/config
+    steps:
+      
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}    
+
+      #Install and configure a kind cluster
+      - name: Installing KinD cluster for the test
+        run: kind create cluster
+
+      - name: Configuring and testing the Installation
+        run: |
+          kubectl wait node --all --for condition=ready --timeout=120s
+          kubectl get nodes 
+
+      - name: Deploy a sample application for chaos injection
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+
+      - name: Install Litmus
+        run: make install
+
+      - name: Run pod-delete experiment
+        run: make pod-delete
+
+      - name: Uninstall litmus
+        run: make uninstall     
+
+  Pod_Memory_Hog_Test:
+    runs-on: ubuntu-latest
+    env:
+      KUBECONFIG: /home/runner/.kube/config
+    steps:
+      
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}    
+
+      #Install and configure a kind cluster
+      - name: Installing KinD cluster for the test
+        run: kind create cluster
+
+      - name: Configuring and testing the Installation
+        run: |
+          kubectl wait node --all --for condition=ready --timeout=120s
+          kubectl get nodes 
+
+      - name: Deploy a sample application for chaos injection
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+
+      - name: Install Litmus
+        run: make install
+
+      - name: Run pod-memory-hog experiment
+        run: make pod-memory-hog
+
+      - name: Uninstall litmus
+        run: make uninstall
+
+  Pod_Network_Corruption_Test:
+    runs-on: ubuntu-latest
+    env:
+      KUBECONFIG: /home/runner/.kube/config
+    steps:
+      
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}    
+
+      #Install and configure a kind cluster
+      - name: Installing KinD cluster for the test
+        run: kind create cluster
+
+      - name: Configuring and testing the Installation
+        run: |
+          kubectl wait node --all --for condition=ready --timeout=120s
+          kubectl get nodes 
+
+      - name: Deploy a sample application for chaos injection
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+
+      - name: Install Litmus
+        run: make install
+
+      - name: Run pod-network-corruption experiment
+        run: make pod-network-corruption
+
+      - name: Uninstall litmus
+        run: make uninstall
+
+  Pod_Network_Duplication_Test:
+    runs-on: ubuntu-latest
+    env:
+      KUBECONFIG: /home/runner/.kube/config
+    steps:
+      
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}    
+
+      #Install and configure a kind cluster
+      - name: Installing KinD cluster for the test
+        run: kind create cluster
+
+      - name: Configuring and testing the Installation
+        run: |
+          kubectl wait node --all --for condition=ready --timeout=120s
+          kubectl get nodes 
+
+      - name: Deploy a sample application for chaos injection
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+
+      - name: Install Litmus
+        run: make install
+
+      - name: Run pod-network-corruption experiment
+        run: make pod-network-corruption
+
+      - name: Uninstall litmus
+        run: make uninstall
+        
+  Pod_Network_Latency_Test:
+    runs-on: ubuntu-latest
+    env:
+      KUBECONFIG: /home/runner/.kube/config
+    steps:
+      
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}    
+
+      #Install and configure a kind cluster
+      - name: Installing KinD cluster for the test
+        run: kind create cluster
+
+      - name: Configuring and testing the Installation
+        run: |
+          kubectl wait node --all --for condition=ready --timeout=120s
+          kubectl get nodes 
+
+      - name: Deploy a sample application for chaos injection
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+
+      - name: Install Litmus
+        run: make install
+
+      - name: Run pod-network-corruption experiment
+        run: make pod-network-corruption
+
+      - name: Uninstall litmus
+        run: make uninstall
+        
+  Pod_Network_Loss_Test:
+    runs-on: ubuntu-latest
+    env:
+      KUBECONFIG: /home/runner/.kube/config
+    steps:
+      
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}    
+
+      #Install and configure a kind cluster
+      - name: Installing KinD cluster for the test
+        run: kind create cluster
+
+      - name: Configuring and testing the Installation
+        run: |
+          kubectl wait node --all --for condition=ready --timeout=120s
+          kubectl get nodes 
+
+      - name: Deploy a sample application for chaos injection
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+
+      - name: Install Litmus
+        run: make install
+
+      - name: Run pod-network-corruption experiment
+        run: make pod-network-corruption
+
+      - name: Uninstall litmus
+        run: make uninstall        

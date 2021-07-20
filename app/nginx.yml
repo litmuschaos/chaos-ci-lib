@@ -6,20 +6,20 @@ metadata:
   annotations:
     litmuschaos.io/chaos: "true"
   labels:
-    run: nginx
+    app: nginx
 spec:
   replicas: 3
   selector:
     matchLabels:
-      run: nginx
+      app: nginx
   template:
     metadata:
       labels:
-        run: nginx
+        app: nginx
     spec:
       containers:
       - name: nginx
-        image: nginx:alpine
+        image: nginx:latest
         ports:
         - containerPort: 80
         resources:
@@ -27,4 +27,3 @@ spec:
             ephemeral-storage: "1Gi"
           limits:
             ephemeral-storage: "2Gi"
-            
