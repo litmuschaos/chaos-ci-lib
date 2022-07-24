@@ -34,18 +34,25 @@ func ChaosPodLogs(experimentsDetails *types.ExperimentDetails, clients environme
 // printChaosPodLogs will wait for the chaosPod to get completed and then prints the logs of it.
 func printChaosPodLogs(experimentsDetails *types.ExperimentDetails, clients environment.ClientSets) error {
 
-	chaosEngine, err := clients.LitmusClient.ChaosEngines(experimentsDetails.AppNS).Get(experimentsDetails.EngineName, metav1.GetOptions{})
+	chaosEngine, err := clients.LitmusClient.ChaosEngines(experimentsDetails.ChaosNamespace).Get(experimentsDetails.EngineName, metav1.GetOptions{})
 	if err != nil {
-		return errors.Errorf("fail to get the chaosengine %v err: %v", experimentsDetails.EngineName, err)
+		chaosEngine, err = clients.LitmusClient.ChaosEngines(experimentsDetails.AppNS).Get(experimentsDetails.EngineName, metav1.GetOptions{})
+		if err != nil {
+			return errors.Errorf("fail to get the chaosengine %v err: %v", experimentsDetails.EngineName, err)
+		}
 	}
+
 	if len(chaosEngine.Status.Experiments) == 0 {
 		return errors.Errorf("fail to get the chaos pod for the test")
 	}
 	for count := 0; count < 3000; count++ {
 
-		chaosPod, err := clients.KubeClient.CoreV1().Pods(experimentsDetails.AppNS).Get(chaosEngine.Status.Experiments[0].ExpPod, metav1.GetOptions{})
+		chaosPod, err := clients.KubeClient.CoreV1().Pods(experimentsDetails.ChaosNamespace).Get(chaosEngine.Status.Experiments[0].ExpPod, metav1.GetOptions{})
 		if err != nil {
-			return errors.Errorf("fail to get the chaos pod err: %v", err)
+			chaosPod, err = clients.KubeClient.CoreV1().Pods(experimentsDetails.AppNS).Get(chaosEngine.Status.Experiments[0].ExpPod, metav1.GetOptions{})
+			if err != nil {
+				return errors.Errorf("fail to get the chaos pod err: %v", err)
+			}
 		}
 		if chaosPod.Status.Phase != "Succeeded" {
 			if chaosPod.Status.Phase != "Running" && chaosPod.Status.Phase != "Pending" {
