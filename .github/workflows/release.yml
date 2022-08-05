@@ -2,7 +2,7 @@ name: Release
 on:
   create:
     tags:
-      - '**'
+      - "**"
 env:
   REPONAME: litmuschaos
   IMAGENAME: chaos-ci-lib
@@ -42,34 +42,36 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: login to GitHub Container Registry
-        run: echo ${{ secrets.DPASS }} | docker login -u ${{ secrets.DNAME }} --password-stdin
-
       - name: Set Tag
         run: |
           TAG="${GITHUB_REF#refs/*/}"
           echo "TAG=${TAG}" >> $GITHUB_ENV
           echo "RELEASE_TAG=${TAG}" >> $GITHUB_ENV
 
-      - name: Build & Push Docker Image with version tag
-        env:
-          DOCKER_REPO: ${{ env.REPONAME }}
-          DOCKER_IMAGE: ${{ env.IMAGENAME }}
-          DOCKER_TAG: ${RELEASE_TAG}
-          DNAME: ${{ secrets.DNAME }}
-          DPASS: ${{ secrets.DPASS }}
-        run: |
-          make push
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+        with:
+          platforms: all
 
-      - name: Build & Push Docker Image with latest tag
-        env:
-          DOCKER_REPO: ${{ env.REPONAME }}
-          DOCKER_IMAGE: ${{ env.IMAGENAME }}
-          DOCKER_TAG: latest
-          DNAME: ${{ secrets.DNAME }}
-          DPASS: ${{ secrets.DPASS }}
-        run: |
-          make push
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+        with:
+          version: latest
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DNAME }}
+          password: ${{ secrets.DPASS }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          file: build/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ env.REPONAME }}/${{ env.IMAGENAME }}:${RELEASE_TAG},${{ env.REPONAME }}/${{ env.IMAGENAME }}:latest
 
   security-scan:
     runs-on: ubuntu-latest
@@ -77,9 +79,9 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'docker.io/${{ env.REPONAME }}/${{ env.IMAGENAME }}:${{ env.IMAGETAG }}'
-          format: 'table'
-          exit-code: '0'
+          image-ref: "docker.io/${{ env.REPONAME }}/${{ env.IMAGENAME }}:${{ env.IMAGETAG }}"
+          format: "table"
+          exit-code: "0"
           ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
+          vuln-type: "os,library"
+          severity: "CRITICAL,HIGH"
