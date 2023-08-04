@@ -1,4 +1,4 @@
-FROM golang:1.14.2
+FROM golang:1.21rc3
 
 LABEL maintainer="LitmusChaos"
 
