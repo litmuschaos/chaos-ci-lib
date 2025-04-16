@@ -11,6 +11,7 @@ require (
 	github.com/litmuschaos/chaos-operator v0.0.0-20240601063404-e96a7ee7f1f7
 	github.com/litmuschaos/litmus-go v0.0.0-20210705063441-babf0c4aa57d
 	github.com/litmuschaos/litmus-go-sdk v0.0.0-20250331044918-9e3bab5ea2c9
+	github.com/litmuschaos/litmus/chaoscenter/graphql/server v0.0.0-20250317093827-172c4b9ffb24
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.34.1
 	github.com/pkg/errors v0.9.1
@@ -44,7 +45,6 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
-	github.com/litmuschaos/litmus/chaoscenter/graphql/server v0.0.0-20250317093827-172c4b9ffb24 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

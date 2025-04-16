@@ -47,4 +47,25 @@ type ExperimentDetails struct {
 	PodsAffectedPerc                   int
 	NodesAffectedPerc                  int
 	Replicas                           int
+
+	// V3 SDK Related Fields
+	InstallLitmusFlag          bool
+	ConnectInfraFlag           bool
+	LitmusEndpoint             string
+	LitmusUsername             string
+	LitmusPassword             string
+	LitmusProjectID            string 
+	InfraName                  string 
+	InfraNamespace             string 
+	InfraScope                 string 
+	InfraSA                    string 
+	InfraDescription           string 
+	InfraPlatformName          string 
+	InfraEnvironmentID         string 
+	InfraNsExists              bool   
+	InfraSaExists              bool   
+	InfraSkipSSL               bool   
+	InfraNodeSelector          string 
+	InfraTolerations           string 
+	ConnectedInfraID         string // Stores the ID of the infra connected via SDK
 }

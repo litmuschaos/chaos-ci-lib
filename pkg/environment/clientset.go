@@ -18,7 +18,8 @@ type ClientSets struct {
 	LitmusClient  *chaosClient.LitmuschaosV1alpha1Client
 	KubeConfig    *rest.Config
 	DynamicClient dynamic.Interface
-	SDKClient litmusSDK.Client
+	SDKClient     litmusSDK.Client
+	LitmusProjectID string
 }
 
 // GenerateClientSetFromKubeConfig will generate the Litmus SDK client
@@ -27,10 +28,11 @@ func (clientSets *ClientSets) GenerateClientSetFromSDK() error {
 	endpoint := os.Getenv("LITMUS_ENDPOINT")
 	username := os.Getenv("LITMUS_USERNAME")
 	password := os.Getenv("LITMUS_PASSWORD")
+	projectID := os.Getenv("LITMUS_PROJECT_ID")
 	
 	// Check if environment variables are set
-	if endpoint == "" || username == "" || password == "" {
-		return errors.New("LITMUS_ENDPOINT, LITMUS_USERNAME, and LITMUS_PASSWORD environment variables must be set")
+	if endpoint == "" || username == "" || password == "" || projectID == "" {
+		return errors.New("LITMUS_ENDPOINT, LITMUS_USERNAME, LITMUS_PASSWORD, and LITMUS_PROJECT_ID environment variables must be set")
 	}
 	
 	// Initialize Litmus SDK client
@@ -44,6 +46,7 @@ func (clientSets *ClientSets) GenerateClientSetFromSDK() error {
 	}
 	
 	clientSets.SDKClient = sdkClient
+	clientSets.LitmusProjectID = projectID
 	return nil
 }
 

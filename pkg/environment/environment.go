@@ -58,6 +58,25 @@ func GetENV(experimentDetails *types.ExperimentDetails, expName, engineName stri
 	experimentDetails.EnginePath = Getenv("ENGINE_PATH", "https://hub.litmuschaos.io/api/chaos/master?file=charts/generic/"+expName+"/engine.yaml")
 	experimentDetails.InstallLitmus = Getenv("INSTALL_LITMUS_URL", "https://litmuschaos.github.io/litmus/litmus-operator-latest.yaml")
 
+	// V3 SDK Related ENV parsing
+	experimentDetails.InstallLitmusFlag, _ = strconv.ParseBool(Getenv("INSTALL_CHAOS_CENTER", "false"))
+	experimentDetails.ConnectInfraFlag, _ = strconv.ParseBool(Getenv("CONNECT_INFRA", "false"))
+	experimentDetails.LitmusEndpoint = Getenv("LITMUS_ENDPOINT", "")
+	experimentDetails.LitmusUsername = Getenv("LITMUS_USERNAME", "")
+	experimentDetails.LitmusPassword = Getenv("LITMUS_PASSWORD", "")
+	experimentDetails.LitmusProjectID = Getenv("LITMUS_PROJECT_ID", "")
+	experimentDetails.InfraName = Getenv("INFRA_NAME", "ci-infra-"+expName)
+	experimentDetails.InfraNamespace = Getenv("INFRA_NAMESPACE", "litmus")
+	experimentDetails.InfraScope = Getenv("INFRA_SCOPE", "namespace")
+	experimentDetails.InfraSA = Getenv("INFRA_SERVICE_ACCOUNT", "litmus")
+	experimentDetails.InfraDescription = Getenv("INFRA_DESCRIPTION", "CI Test Infrastructure")
+	experimentDetails.InfraPlatformName = Getenv("INFRA_PLATFORM_NAME", "others")
+	experimentDetails.InfraEnvironmentID = Getenv("INFRA_ENVIRONMENT_ID", "")
+	experimentDetails.InfraNsExists, _ = strconv.ParseBool(Getenv("INFRA_NS_EXISTS", "false"))
+	experimentDetails.InfraSaExists, _ = strconv.ParseBool(Getenv("INFRA_SA_EXISTS", "false"))
+	experimentDetails.InfraSkipSSL, _ = strconv.ParseBool(Getenv("INFRA_SKIP_SSL", "false"))
+	experimentDetails.InfraNodeSelector = Getenv("INFRA_NODE_SELECTOR", "")
+	experimentDetails.InfraTolerations = Getenv("INFRA_TOLERATIONS", "")
 }
 
 // Getenv fetch the env and set the default value, if any
