@@ -68,4 +68,5 @@ type ExperimentDetails struct {
 	InfraNodeSelector          string 
 	InfraTolerations           string 
 	ConnectedInfraID         string // Stores the ID of the infra connected via SDK
+	ExperimentRunID          string // Stores the ID of the experiment run started via SDK
 }
