@@ -4,22 +4,49 @@ import (
 	"os"
 
 	chaosClient "github.com/litmuschaos/chaos-operator/pkg/client/clientset/versioned/typed/litmuschaos/v1alpha1"
+	litmusSDK "github.com/litmuschaos/litmus-go-sdk/pkg/sdk"
 	"github.com/pkg/errors"
-	"k8s.io/client-go/kubernetes"
-
-	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// ClientSets is a collection of clientSets and kubeConfig needed
+// // ClientSets is a collection of clientSets and kubeConfig needed
 type ClientSets struct {
 	KubeClient    *kubernetes.Clientset
 	LitmusClient  *chaosClient.LitmuschaosV1alpha1Client
 	KubeConfig    *rest.Config
 	DynamicClient dynamic.Interface
+	SDKClient litmusSDK.Client
 }
+
+// GenerateClientSetFromKubeConfig will generate the Litmus SDK client
+func (clientSets *ClientSets) GenerateClientSetFromSDK() error {
+	// Initialize Litmus SDK client
+	endpoint := os.Getenv("LITMUS_ENDPOINT")
+	username := os.Getenv("LITMUS_USERNAME")
+	password := os.Getenv("LITMUS_PASSWORD")
+	
+	// Check if environment variables are set
+	if endpoint == "" || username == "" || password == "" {
+		return errors.New("LITMUS_ENDPOINT, LITMUS_USERNAME, and LITMUS_PASSWORD environment variables must be set")
+	}
+	
+	// Initialize Litmus SDK client
+	sdkClient, err := litmusSDK.NewClient(litmusSDK.ClientOptions{
+		Endpoint: endpoint,
+		Username: username,
+		Password: password,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "Unable to create Litmus SDK client: %v", err)
+	}
+	
+	clientSets.SDKClient = sdkClient
+	return nil
+}
+
 
 // GenerateClientSetFromKubeConfig will generation both ClientSets (k8s, and Litmus) as well as the KubeConfig
 func (clientSets *ClientSets) GenerateClientSetFromKubeConfig() error {
@@ -89,3 +116,4 @@ func DynamicClientSet(config *rest.Config) (dynamic.Interface, error) {
 	}
 	return dynamicClientSet, nil
 }
+
