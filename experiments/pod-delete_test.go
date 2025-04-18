@@ -2,6 +2,8 @@ package experiments
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"testing"
 	"time"
 
@@ -14,7 +16,7 @@ import (
 	. "github.com/onsi/gomega"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog"
-	"sigs.k8s.io/yaml"
+	yamlChe "sigs.k8s.io/yaml"
 )
 
 func TestPodDelete(t *testing.T) {
@@ -110,7 +112,7 @@ var _ = Describe("BDD of running pod-delete experiment", func() {
 
 			// 3. Poll for Experiment Run Status
 			By("[SDK Status]: Polling for Experiment Run Status")
-			var finalStatus *experiment.ExperimentRunResponse
+			var finalStatus *models.ExperimentRun
 			var pollError error
 			timeout := time.After(8 * time.Minute)
 			ticker := time.NewTicker(15 * time.Second)
@@ -181,37 +183,76 @@ var _ = Describe("BDD of running pod-delete experiment", func() {
 	})
 })
 
-// Helper function to construct the experiment request
-// FIXME: This needs a proper implementation to generate the correct manifest YAML
-//        based on experimentDetails for pod-delete.
+// ConstructPodDeleteExperimentRequest constructs the experiment request by fetching template from external source
 func ConstructPodDeleteExperimentRequest(details *types.ExperimentDetails, experimentID string) (*models.SaveChaosExperimentRequest, error) {
 	klog.Infof("Constructing experiment request for %s with ID %s", details.ExperimentName, experimentID)
 
-	// Placeholder manifest definition - Attempting single line definition for linter
-	const manifestYAML = `apiVersion: litmuschaos.io/v1alpha1\nkind: ChaosExperiment\nmetadata:\n  name: %s\n  namespace: %s\nspec:\n  steps:\n  - name: delete-pods\n    definition:\n      chaos:\n        fault: pod-delete\n        mode: "" # FIXME: Determine mode\n        selector:\n          namespaces:\n            - "%s"\n          labelSelectors:\n            "%s"\n        # FIXME: Inject other pod-delete fields\n      probes: [] # FIXME: Add probes\n`
+	// Fetch Engine template from external source
+	var finalManifestString string
+	enginePath := "https://hub.litmuschaos.io/api/chaos/master?file=charts/generic/pod-delete/engine.yaml"
 
-	// Basic formatting - NEEDS PROPER POPULATION FROM 'details'
-	formattedManifest := fmt.Sprintf(manifestYAML,
-		details.ExperimentName, // metadata.name
-		details.ChaosNamespace, // metadata.namespace
-		details.AppNS,
-		details.AppLabel,
-	)
+	// Fetch YAML template
+	res, err := http.Get(enginePath)
+	if err != nil {
+		klog.Errorf("Failed to fetch the engine template, due to %v", err)
+		return nil, fmt.Errorf("failed to fetch engine template: %w", err)
+	}
+	defer res.Body.Close()
 
-	// Validate and clean up the YAML structure
-	var manifestInterface interface{}
-	errYaml := yaml.Unmarshal([]byte(formattedManifest), &manifestInterface)
-	if errYaml != nil {
-		klog.Errorf("Error unmarshalling constructed manifest: %v", errYaml)
-		return nil, fmt.Errorf("failed to unmarshal constructed manifest: %w", errYaml)
+	// Read template content
+	fileInput, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		klog.Errorf("Failed to read data from response: %v", err)
+		return nil, fmt.Errorf("failed to read template data: %w", err)
 	}
-	finalManifestBytes, errYamlMarshal := yaml.Marshal(manifestInterface)
-	if errYamlMarshal != nil {
-		klog.Errorf("Error marshalling final manifest: %v", errYamlMarshal)
-		return nil, fmt.Errorf("failed to marshal final manifest: %w", errYamlMarshal)
+
+	// Parse the template
+	var yamlObj interface{}
+	err = yamlChe.Unmarshal(fileInput, &yamlObj)
+	if err != nil {
+		klog.Errorf("Error unmarshalling fetched template: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal template: %w", err)
 	}
-	finalManifestString := string(finalManifestBytes)
-	klog.Infof("Constructed Manifest: %s", finalManifestString)
+
+	// Convert to map to modify
+	yamlMap, ok := yamlObj.(map[string]interface{})
+	if ok {
+		// Update metadata fields
+		if metadata, metaOk := yamlMap["metadata"].(map[string]interface{}); metaOk {
+			metadata["name"] = details.ExperimentName
+			metadata["namespace"] = details.ChaosNamespace
+		}
+
+		// Update spec fields if needed
+		if spec, specOk := yamlMap["spec"].(map[string]interface{}); specOk {
+			if experiments, expOk := spec["experiments"].([]interface{}); expOk && len(experiments) > 0 {
+				if exp, expItemOk := experiments[0].(map[string]interface{}); expItemOk {
+					// Set experiment name
+					exp["name"] = details.ExperimentName
+					
+					// Update app info if present
+					if appinfo, appOk := exp["spec"].(map[string]interface{}); appOk {
+						if app, targetOk := appinfo["appinfo"].(map[string]interface{}); targetOk {
+							app["appns"] = details.AppNS
+							app["applabel"] = details.AppLabel
+						}
+					}
+				}
+			}
+		}
+
+		// Marshal back to YAML
+		finalManifestBytes, errMarshal := yamlChe.Marshal(yamlMap)
+		if errMarshal != nil {
+			klog.Errorf("Error marshalling modified template: %v", errMarshal)
+			return nil, fmt.Errorf("failed to marshal modified template: %w", errMarshal)
+		}
+		finalManifestString = string(finalManifestBytes)
+	} else {
+		return nil, fmt.Errorf("failed to parse template as map")
+	}
+
+	klog.Infof("Constructed Manifest from template: %s", finalManifestString)
 
 	request := &models.SaveChaosExperimentRequest{
 		ID:             experimentID, 
@@ -219,7 +260,7 @@ func ConstructPodDeleteExperimentRequest(details *types.ExperimentDetails, exper
 		Description:    fmt.Sprintf("CI/CD Triggered Chaos Experiment: %s", details.ExperimentName), 
 		Tags:           []string{"chaos-ci-lib", details.ExperimentName},
 		InfraID:        details.ConnectedInfraID,
-		Manifest:     finalManifestString, 
+		Manifest:       finalManifestString, 
 	}
 	return request, nil
 }
