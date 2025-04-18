@@ -36,6 +36,7 @@ type ExperimentDetails struct {
 	ContainerPath                      string
 	SocketPath                         string
 	NetworkPacketDuplicationPercentage int
+	NetworkPacketCorruptionPercentage  int
 	FileSystemUtilizationPercentage    int
 	FilesystemUtilizationBytes         int
 	NetworkPacketLossPercentage        int

@@ -8,6 +8,7 @@ replace gopkg.in/fsnotify.v1 v1.4.8 => github.com/fsnotify/fsnotify v1.4.8
 
 require (
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
+	github.com/google/uuid v1.6.0
 	github.com/litmuschaos/chaos-operator v0.0.0-20240601063404-e96a7ee7f1f7
 	github.com/litmuschaos/litmus-go v0.0.0-20210705063441-babf0c4aa57d
 	github.com/litmuschaos/litmus-go-sdk v0.0.0-20250331044918-9e3bab5ea2c9
@@ -20,6 +21,7 @@ require (
 	k8s.io/apimachinery v0.26.0
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/klog v1.0.0
+	sigs.k8s.io/yaml v1.4.0
 )
 
 require (
@@ -40,7 +42,6 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/gnostic v0.5.5 // indirect
 	github.com/imdario/mergo v0.3.9 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
@@ -72,7 +73,6 @@ require (
 	k8s.io/kube-openapi v0.0.0-20220124234850-424119656bbf // indirect
 	k8s.io/utils v0.0.0-20221107191617-1a15be271d1d // indirect
 	sigs.k8s.io/controller-runtime v0.11.1 // indirect
-	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
 // Pinned to kubernetes-1.16.2
