@@ -94,15 +94,15 @@ var _ = Describe("BDD of running pod-memory-hog experiment", func() {
 			By("[SDK Status]: Polling for Experiment Run Status")
 			var finalPhase string
 			var pollError error
-			timeout := time.After(8 * time.Minute)
-			ticker := time.NewTicker(15 * time.Second)
+			timeout := time.After(time.Duration(experimentsDetails.ExperimentTimeout) * time.Minute)
+			ticker := time.NewTicker(time.Duration(experimentsDetails.ExperimentPollingInterval) * time.Second)
 			defer ticker.Stop()
 
 			pollLoop:
 			for {
 				select {
 				case <-timeout:
-					pollError = fmt.Errorf("timed out waiting for experiment run %s to complete after 8 minutes", experimentsDetails.ExperimentRunID)
+					pollError = fmt.Errorf("timed out waiting for experiment run %s to complete after %d minutes", experimentsDetails.ExperimentRunID, experimentsDetails.ExperimentTimeout)
 					klog.Error(pollError)
 					break pollLoop
 				case <-ticker.C:
@@ -114,7 +114,7 @@ var _ = Describe("BDD of running pod-memory-hog experiment", func() {
 					currentPhase := runStatus.Data.ExperimentRun.Phase
 					klog.Infof("Experiment Run %s current phase: %s", experimentsDetails.ExperimentRunID, currentPhase)
 					isFinalPhase := false
-					finalPhases := []string{"Completed", "Failed", "Error", "Stopped", "Skipped", "Aborted", "Timeout"}
+					finalPhases := []string{"Completed", "Completed_With_Error", "Failed", "Error", "Stopped", "Skipped", "Aborted", "Timeout" , "Terminated"}
 					for _, phase := range finalPhases {
 						if currentPhase == phase {
 							isFinalPhase = true

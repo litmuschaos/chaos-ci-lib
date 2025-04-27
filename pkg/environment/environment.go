@@ -47,6 +47,8 @@ func GetENV(experimentDetails *types.ExperimentDetails, expName, engineName stri
 	experimentDetails.NodesAffectedPerc, _ = strconv.Atoi(Getenv("NODES_AFFECTED_PERC", "0"))
 	experimentDetails.FilesystemUtilizationBytes, _ = strconv.Atoi(Getenv("FILESYSTEM_UTILIZATION_BYTES", ""))
 	experimentDetails.Replicas, _ = strconv.Atoi(Getenv("REPLICA_COUNT", "0"))
+	experimentDetails.ExperimentTimeout, _ = strconv.Atoi(Getenv("EXPERIMENT_TIMEOUT", "8"))
+	experimentDetails.ExperimentPollingInterval, _ = strconv.Atoi(Getenv("EXPERIMENT_POLLING_INTERVAL", "15"))
 
 	//All Images for running chaos test
 	experimentDetails.GoExperimentImage = Getenv("EXPERIMENT_IMAGE", "litmuschaos/go-runner:ci")
