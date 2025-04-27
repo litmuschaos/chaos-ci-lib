@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/environment"
+	"github.com/litmuschaos/chaos-ci-lib/pkg/infrastructure"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/log"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/types"
 	experiment "github.com/litmuschaos/litmus-go-sdk/pkg/apis/experiment"
@@ -51,39 +52,17 @@ var _ = Describe("BDD of running node-io-stress experiment", func() {
 			log.Infof("[PreReq]: Getting the ENVs for the %v experiment", experimentsDetails.ExperimentName)
 			environment.GetENV(&experimentsDetails, "node-io-stress", "node-io-stress-engine")
 
-			// Connect to ChaosCenter Infrastructure via SDK (Mandatory)
-			By("[PreChaos]: Connecting Infra via SDK")
-			klog.Infof("Attempting to connect infrastructure: %s", experimentsDetails.InfraName)
+			// Initialize SDK client
+			By("[PreChaos]: Initializing SDK client")
 			err = clients.GenerateClientSetFromSDK()
 			Expect(err).To(BeNil(), "Unable to generate Litmus SDK client, due to {%v}", err)
 
-			sdkConfig := map[string]interface{}{
-				"namespace":      experimentsDetails.InfraNamespace,
-				"serviceAccount": experimentsDetails.InfraSA,
-				"mode":           experimentsDetails.InfraScope,
-				"description":    experimentsDetails.InfraDescription,
-				"platformName":   experimentsDetails.InfraPlatformName,
-				"environmentID":  experimentsDetails.InfraEnvironmentID,
-				"nsExists":       experimentsDetails.InfraNsExists,
-				"saExists":       experimentsDetails.InfraSaExists,
-				"skipSSL":        experimentsDetails.InfraSkipSSL,
-				"nodeSelector":   experimentsDetails.InfraNodeSelector,
-				"tolerations":    experimentsDetails.InfraTolerations,
-			}
+			// Setup infrastructure using the new module
+			By("[PreChaos]: Setting up infrastructure")
+			err = infrastructure.SetupInfrastructure(&experimentsDetails, &clients)
+			Expect(err).To(BeNil(), "Failed to setup infrastructure, due to {%v}", err)
 
-			infraData, errSdk := clients.SDKClient.Infrastructure().Create(experimentsDetails.InfraName, sdkConfig)
-			Expect(errSdk).To(BeNil(), "Failed to create infrastructure via SDK, due to {%v}", errSdk)
-			
-			Expect(infraData).NotTo(BeNil(), "Infrastructure Create call returned nil data for infra '%s'", experimentsDetails.InfraName)
-			registerResponse, ok := infraData.(*models.RegisterInfraResponse)
-			Expect(ok).To(BeTrue(), "Could not assert type '%T' to *models.RegisterInfraResponse", infraData)
-			Expect(registerResponse).NotTo(BeNil(), "RegisterInfraResponse is nil after type assertion")
-			Expect(registerResponse.InfraID).NotTo(BeEmpty(), "Extracted InfraID is empty")
-			
-			experimentsDetails.ConnectedInfraID = registerResponse.InfraID
-			klog.Infof("Successfully connected infrastructure via SDK. Stored ID: %s", experimentsDetails.ConnectedInfraID)
-
-			// Fail setup explicitly if ID is empty after checks
+			// Validate that infrastructure ID is properly set
 			Expect(experimentsDetails.ConnectedInfraID).NotTo(BeEmpty(), "Setup failed: ConnectedInfraID is empty after connection attempt.")
 		})
 
@@ -113,7 +92,7 @@ var _ = Describe("BDD of running node-io-stress experiment", func() {
 
 			// 3. Poll for Experiment Run Status
 			By("[SDK Status]: Polling for Experiment Run Status")
-			var finalStatus *models.ExperimentRun
+			var finalPhase string
 			var pollError error
 			timeout := time.After(8 * time.Minute)
 			ticker := time.NewTicker(15 * time.Second)
@@ -143,7 +122,7 @@ var _ = Describe("BDD of running node-io-stress experiment", func() {
 						}
 					}
 					if isFinalPhase {
-						finalStatus = &runStatus.Data.ExperimentRun
+						finalPhase = currentPhase
 						klog.Infof("Experiment Run %s reached final phase: %s", experimentsDetails.ExperimentRunID, currentPhase)
 						break pollLoop
 					}
@@ -153,33 +132,17 @@ var _ = Describe("BDD of running node-io-stress experiment", func() {
 			// 4. Post Validation / Verdict Check
 			By("[SDK Verdict]: Checking Experiment Run Verdict")
 			Expect(pollError).To(BeNil())
-			Expect(finalStatus).NotTo(BeNil(), "Final status should not be nil after polling")
-			Expect(finalStatus.Phase).To(Equal("Completed"), fmt.Sprintf("Experiment Run phase should be Completed, but got %s", finalStatus.Phase))
+			Expect(finalPhase).NotTo(BeEmpty(), "Final phase should not be empty after polling")
+			Expect(finalPhase).To(Equal("Completed"), fmt.Sprintf("Experiment Run phase should be Completed, but got %s", finalPhase))
 			
 		})
 
 		// Cleanup using AfterEach
 		AfterEach(func() {
-			// Disconnect only if Infra ID was successfully stored
-			if experimentsDetails.ConnectedInfraID != "" {
-				By("[CleanUp]: Disconnecting Infra via SDK")
-				klog.Infof("Attempting to disconnect infrastructure with ID: %s", experimentsDetails.ConnectedInfraID)
-				if clients.SDKClient == nil {
-					klog.Warning("SDK client not initialized in AfterEach, attempting re-initialization for cleanup...")
-					errSdkInit := clients.GenerateClientSetFromSDK()
-					if errSdkInit != nil {
-						klog.Errorf("Failed to re-initialize SDK client for cleanup: %v", errSdkInit)
-						return
-					}
-				}
-				errDisconnect := clients.SDKClient.Infrastructure().Disconnect(experimentsDetails.ConnectedInfraID)
-				Expect(errDisconnect).To(BeNil(), "Failed to disconnect infra %s via SDK, due to {%v}", experimentsDetails.ConnectedInfraID, errDisconnect)
-				if errDisconnect == nil {
-					klog.Infof("Successfully disconnected infrastructure: %s", experimentsDetails.ConnectedInfraID)
-				}
-			} else {
-				klog.Info("[CleanUp]: No connected infra ID found, skipping SDK disconnection.")
-			}
+			// Disconnect infrastructure using the new module
+			By("[CleanUp]: Cleaning up infrastructure")
+			errDisconnect := infrastructure.DisconnectInfrastructure(&experimentsDetails, &clients)
+			Expect(errDisconnect).To(BeNil(), "Failed to clean up infrastructure, due to {%v}", errDisconnect)
 		})
 	})
 })
