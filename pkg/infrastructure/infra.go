@@ -1,0 +1,129 @@
+package infrastructure
+
+import (
+	"errors"
+	"os"
+	"strconv"
+
+	"github.com/litmuschaos/chaos-ci-lib/pkg/environment"
+	"github.com/litmuschaos/chaos-ci-lib/pkg/types"
+	models "github.com/litmuschaos/litmus/chaoscenter/graphql/server/graph/model"
+	"k8s.io/klog"
+)
+
+// SetupInfrastructure handles the creation or connection to infrastructure
+// It checks if infrastructure should be installed and if it's already connected
+func SetupInfrastructure(experimentsDetails *types.ExperimentDetails, clients *environment.ClientSets) error {
+	// Check if infrastructure operations should be performed
+	installInfra, _ := strconv.ParseBool(os.Getenv("INSTALL_INFRA"))
+	if !installInfra {
+		klog.Info("INSTALL_INFRA is set to false, skipping infrastructure setup")
+		return nil
+	}
+
+	// Check if we should use existing infrastructure
+	useExistingInfra, _ := strconv.ParseBool(os.Getenv("USE_EXISTING_INFRA"))
+	if useExistingInfra {
+		infraID := os.Getenv("EXISTING_INFRA_ID")
+		if infraID == "" {
+			return errors.New("USE_EXISTING_INFRA is true but EXISTING_INFRA_ID is not provided")
+		}
+		experimentsDetails.ConnectedInfraID = infraID
+		klog.Infof("Using existing infrastructure with ID: %s", infraID)
+		return nil
+	}
+
+	// If not using existing infrastructure, connect to new one
+	return ConnectInfrastructure(experimentsDetails, clients)
+}
+
+// ConnectInfrastructure connects to a new infrastructure via the SDK
+func ConnectInfrastructure(experimentsDetails *types.ExperimentDetails, clients *environment.ClientSets) error {
+	klog.Infof("Attempting to connect infrastructure: %s", experimentsDetails.InfraName)
+	
+	// Initialize SDK client if needed
+	if clients.SDKClient == nil {
+		err := clients.GenerateClientSetFromSDK()
+		if err != nil {
+			return err
+		}
+	}
+
+	// Prepare infrastructure configuration
+	sdkConfig := map[string]interface{}{
+		"namespace":      experimentsDetails.InfraNamespace,
+		"serviceAccount": experimentsDetails.InfraSA,
+		"mode":           experimentsDetails.InfraScope,
+		"description":    experimentsDetails.InfraDescription,
+		"platformName":   experimentsDetails.InfraPlatformName,
+		"environmentID":  experimentsDetails.InfraEnvironmentID,
+		"nsExists":       experimentsDetails.InfraNsExists,
+		"saExists":       experimentsDetails.InfraSaExists,
+		"skipSSL":        experimentsDetails.InfraSkipSSL,
+		"nodeSelector":   experimentsDetails.InfraNodeSelector,
+		"tolerations":    experimentsDetails.InfraTolerations,
+	}
+
+	// Create infrastructure via SDK
+	infraData, errSdk := clients.SDKClient.Infrastructure().Create(experimentsDetails.InfraName, sdkConfig)
+	if errSdk != nil {
+		return errSdk
+	}
+
+	// Process response and extract infra ID
+	if infraData == nil {
+		return errors.New("infrastructure create call returned nil data")
+	}
+
+	registerResponse, ok := infraData.(*models.RegisterInfraResponse)
+	if !ok {
+		return errors.New("could not assert type to RegisterInfraResponse")
+	}
+
+	if registerResponse == nil {
+		return errors.New("registerInfraResponse is nil after type assertion")
+	}
+
+	if registerResponse.InfraID == "" {
+		return errors.New("extracted InfraID is empty")
+	}
+
+	experimentsDetails.ConnectedInfraID = registerResponse.InfraID
+	klog.Infof("Successfully connected infrastructure via SDK. Stored ID: %s", experimentsDetails.ConnectedInfraID)
+	
+	return nil
+}
+
+// DisconnectInfrastructure disconnects from infrastructure if it was created during the test
+func DisconnectInfrastructure(experimentsDetails *types.ExperimentDetails, clients *environment.ClientSets) error {
+	// Don't disconnect if we're using an existing infrastructure
+	useExistingInfra, _ := strconv.ParseBool(os.Getenv("USE_EXISTING_INFRA"))
+	if useExistingInfra {
+		klog.Info("Using existing infrastructure, skipping disconnection")
+		return nil
+	}
+
+	// Check if we have an infrastructure to disconnect
+	if experimentsDetails.ConnectedInfraID == "" {
+		klog.Info("No connected infrastructure ID found, skipping disconnection")
+		return nil
+	}
+
+	// Initialize SDK client if needed
+	if clients.SDKClient == nil {
+		err := clients.GenerateClientSetFromSDK()
+		if err != nil {
+			return err
+		}
+	}
+
+	// Disconnect the infrastructure
+	klog.Infof("Attempting to disconnect infrastructure with ID: %s", experimentsDetails.ConnectedInfraID)
+	err := clients.SDKClient.Infrastructure().Disconnect(experimentsDetails.ConnectedInfraID)
+	if err != nil {
+		return err
+	}
+
+	klog.Infof("Successfully disconnected infrastructure: %s", experimentsDetails.ConnectedInfraID)
+	return nil
+} 

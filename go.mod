@@ -11,7 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/litmuschaos/chaos-operator v0.0.0-20240601063404-e96a7ee7f1f7
 	github.com/litmuschaos/litmus-go v0.0.0-20210705063441-babf0c4aa57d
-	github.com/litmuschaos/litmus-go-sdk v0.0.0-20250331044918-9e3bab5ea2c9
+	github.com/litmuschaos/litmus-go-sdk v0.0.0-20250421061757-b4c425a3b0d1
 	github.com/litmuschaos/litmus/chaoscenter/graphql/server v0.0.0-20250317093827-172c4b9ffb24
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.34.1

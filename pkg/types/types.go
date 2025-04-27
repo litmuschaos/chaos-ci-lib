@@ -68,6 +68,11 @@ type ExperimentDetails struct {
 	InfraSkipSSL               bool   
 	InfraNodeSelector          string 
 	InfraTolerations           string 
-	ConnectedInfraID         string // Stores the ID of the infra connected via SDK
-	ExperimentRunID          string // Stores the ID of the experiment run started via SDK
+	ConnectedInfraID           string // Stores the ID of the infra connected via SDK
+	ExperimentRunID            string // Stores the ID of the experiment run started via SDK
+	
+	// New infrastructure control variables
+	InstallInfra              bool   // Flag to determine if infrastructure should be installed
+	UseExistingInfra          bool   // Flag to determine if existing infrastructure should be used
+	ExistingInfraID           string // ID of existing infrastructure if UseExistingInfra is true
 }
