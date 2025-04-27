@@ -92,7 +92,7 @@ var _ = Describe("BDD of running pod-cpu-hog experiment", func() {
 
 			// 3. Poll for Experiment Run Status
 			By("[SDK Status]: Polling for Experiment Run Status")
-			var finalStatus *models.ExperimentRun
+			var finalPhase string
 			var pollError error
 			timeout := time.After(8 * time.Minute)
 			ticker := time.NewTicker(15 * time.Second)
@@ -122,7 +122,7 @@ var _ = Describe("BDD of running pod-cpu-hog experiment", func() {
 						}
 					}
 					if isFinalPhase {
-						finalStatus = &runStatus.Data.ExperimentRun
+						finalPhase = currentPhase
 						klog.Infof("Experiment Run %s reached final phase: %s", experimentsDetails.ExperimentRunID, currentPhase)
 						break pollLoop
 					}
@@ -132,8 +132,8 @@ var _ = Describe("BDD of running pod-cpu-hog experiment", func() {
 			// 4. Post Validation / Verdict Check
 			By("[SDK Verdict]: Checking Experiment Run Verdict")
 			Expect(pollError).To(BeNil())
-			Expect(finalStatus).NotTo(BeNil(), "Final status should not be nil after polling")
-			Expect(finalStatus.Phase).To(Equal("Completed"), fmt.Sprintf("Experiment Run phase should be Completed, but got %s", finalStatus.Phase))
+			Expect(finalPhase).NotTo(BeEmpty(), "Final phase should not be empty after polling")
+			Expect(finalPhase).To(Equal("Completed"), fmt.Sprintf("Experiment Run phase should be Completed, but got %s", finalPhase))
 			
 		})
 
