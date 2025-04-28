@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/litmuschaos/chaos-ci-lib/pkg"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/environment"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/infrastructure"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/log"
@@ -113,15 +114,8 @@ var _ = Describe("BDD of running pod-network-duplication experiment", func() {
 					}
 					currentPhase := runStatus.Data.ExperimentRun.Phase
 					klog.Infof("Experiment Run %s current phase: %s", experimentsDetails.ExperimentRunID, currentPhase)
-					isFinalPhase := false
-					finalPhases := []string{"Completed", "Completed_With_Error", "Failed", "Error", "Stopped", "Skipped", "Aborted", "Timeout" , "Terminated"}
-					for _, phase := range finalPhases {
-						if currentPhase == phase {
-							isFinalPhase = true
-							break
-						}
-					}
-					if isFinalPhase {
+					finalPhases := []string{"Completed", "Completed_With_Error", "Failed", "Error", "Stopped", "Skipped", "Aborted", "Timeout", "Terminated"}
+					if pkg.ContainsString(finalPhases, currentPhase) {
 						finalPhase = currentPhase
 						klog.Infof("Experiment Run %s reached final phase: %s", experimentsDetails.ExperimentRunID, currentPhase)
 						break pollLoop
