@@ -27,7 +27,8 @@ func setNodeIOStressExperimentENV(experimentsDetails *types.ExperimentDetails) *
 	}
 	// Add Experiment ENV's
 	envDetails.SetEnv("FILESYSTEM_UTILIZATION_PERCENTAGE", strconv.Itoa(experimentsDetails.NodeCPUCore)).
-		SetEnv("FILESYSTEM_UTILIZATION_BYTES", strconv.Itoa(experimentsDetails.FilesystemUtilizationBytes))
+		SetEnv("FILESYSTEM_UTILIZATION_BYTES", strconv.Itoa(experimentsDetails.FilesystemUtilizationBytes)).
+		SetEnv("NODES_AFFECTED_PERC", strconv.Itoa(experimentsDetails.PodsAffectedPerc))
 
 	return &envDetails
 }
