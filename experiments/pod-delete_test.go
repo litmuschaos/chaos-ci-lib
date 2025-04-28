@@ -2,8 +2,6 @@ package experiments
 
 import (
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"testing"
 	"time"
 
@@ -17,7 +15,6 @@ import (
 	. "github.com/onsi/gomega"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog"
-	yamlChe "sigs.k8s.io/yaml"
 )
 
 func TestPodDelete(t *testing.T) {
@@ -146,83 +143,168 @@ var _ = Describe("BDD of running pod-delete experiment", func() {
 	})
 })
 
-// ConstructPodDeleteExperimentRequest constructs the experiment request by fetching template from external source
+// Create Argo Workflow manifest for Litmus 3.0
+//This replaces the approach of calling the litmus-workflows-api to get the workflow manifest
+// Not sure if this is the best way to do it, need confirmation from mentors
 func ConstructPodDeleteExperimentRequest(details *types.ExperimentDetails, experimentID string) (*models.SaveChaosExperimentRequest, error) {
-	klog.Infof("Constructing experiment request for %s with ID %s", details.ExperimentName, experimentID)
+    klog.Infof("Constructing experiment request for %s with ID %s", details.ExperimentName, experimentID)
 
-	// Fetch Engine template from external source
-	var finalManifestString string
-	enginePath := "https://hub.litmuschaos.io/api/chaos/master?file=charts/generic/pod-delete/engine.yaml"
+    // Create Argo Workflow manifest for Litmus 3.0
+    workflowManifest := fmt.Sprintf(`{
+        "apiVersion": "argoproj.io/v1alpha1",
+        "kind": "Workflow",
+        "metadata": {
+            "name": "%s",
+            "namespace": "%s",
+            "labels": {
+                "infra_id": "%s",
+                "subject": "{{workflow.parameters.appNamespace}}_pod-delete",
+                "workflow_id": "%s",
+                "workflows.argoproj.io/controller-instanceid": "%s"
+            }
+        },
+        "spec": {
+            "entrypoint": "argowf-chaos",
+            "serviceAccountName": "argo-chaos",
+            "securityContext": {
+                "runAsUser": 1000,
+                "runAsNonRoot": true
+            },
+            "arguments": {
+                "parameters": [
+                    {
+                        "name": "adminModeNamespace",
+                        "value": "%s"
+                    },
+                    {
+                        "name": "appNamespace",
+                        "value": "%s"
+                    }
+                ]
+            },
+            "templates": [
+                {
+                    "name": "argowf-chaos",
+                    "steps": [
+                        [
+                            {
+                                "name": "install-chaos-faults",
+                                "template": "install-chaos-faults",
+                                "arguments": {}
+                            }
+                        ],
+                        [
+                            {
+                                "name": "run-chaos",
+                                "template": "run-chaos",
+                                "arguments": {}
+                            }
+                        ],
+                        [
+                            {
+                                "name": "cleanup-chaos-resources",
+                                "template": "cleanup-chaos-resources",
+                                "arguments": {}
+                            }
+                        ]
+                    ]
+                },
+                {
+                    "name": "install-chaos-faults",
+                    "inputs": {
+                        "artifacts": [
+                            {
+                                "name": "install-chaos-faults",
+                                "path": "/tmp/pod-delete.yaml",
+                                "raw": {
+                                    "data": "apiVersion: litmuschaos.io/v1alpha1\\ndescription:\\n  message: |\\n    Deletes a pod belonging to a deployment/statefulset/daemonset\\nkind: ChaosExperiment\\nmetadata:\\n  name: pod-delete\\nspec:\\n  definition:\\n    scope: Namespaced\\n    permissions:\\n      - apiGroups:\\n          - \\\"\\\"\\n          - \\\"apps\\\"\\n          - \\\"batch\\\"\\n          - \\\"litmuschaos.io\\\"\\n        resources:\\n          - \\\"deployments\\\"\\n          - \\\"jobs\\\"\\n          - \\\"pods\\\"\\n          - \\\"pods/log\\\"\\n          - \\\"events\\\"\\n          - \\\"configmaps\\\"\\n          - \\\"chaosengines\\\"\\n          - \\\"chaosexperiments\\\"\\n          - \\\"chaosresults\\\"\\n        verbs:\\n          - \\\"create\\\"\\n          - \\\"list\\\"\\n          - \\\"get\\\"\\n          - \\\"patch\\\"\\n          - \\\"update\\\"\\n          - \\\"delete\\\"\\n      - apiGroups:\\n          - \\\"\\\"\\n        resources:\\n          - \\\"nodes\\\"\\n        verbs:\\n          - \\\"get\\\"\\n          - \\\"list\\\"\\n    image: \\\"litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0\\\"\\n    imagePullPolicy: Always\\n    args:\\n    - -c\\n    - ./experiments -name pod-delete\\n    command:\\n    - /bin/bash\\n    env:\\n\\n    - name: TOTAL_CHAOS_DURATION\\n      value: '%d'\\n\\n    # Period to wait before and after injection of chaos in sec\\n    - name: RAMP_TIME\\n      value: ''\\n\\n    # provide the kill count\\n    - name: KILL_COUNT\\n      value: '%d'\\n\\n    - name: FORCE\\n      value: 'true'\\n\\n    - name: CHAOS_INTERVAL\\n      value: '%d'\\n\\n    labels:\\n      name: pod-delete\\n"
+                                }
+                            }
+                        ]
+                    },
+                    "container": {
+                        "image": "litmuschaos/k8s:latest",
+                        "command": [
+                            "sh",
+                            "-c"
+                        ],
+                        "args": [
+                            "kubectl apply -f /tmp/pod-delete.yaml -n {{workflow.parameters.adminModeNamespace}}"
+                        ],
+                        "resources": {}
+                    }
+                },
+                {
+                    "name": "run-chaos",
+                    "inputs": {
+                        "artifacts": [
+                            {
+                                "name": "run-chaos",
+                                "path": "/tmp/chaosengine-run-chaos.yaml",
+                                "raw": {
+                                    "data": "apiVersion: litmuschaos.io/v1alpha1\\nkind: ChaosEngine\\nmetadata:\\n  namespace: \\\"{{workflow.parameters.adminModeNamespace}}\\\"\\n  labels:\\n    context: \\\"{{workflow.parameters.appNamespace}}_pod-delete\\\"\\n    workflow_run_id: \\\"{{ workflow.uid }}\\\"\\n    workflow_name: %s\\n  annotations:\\n    probeRef: '[{\\\"name\\\":\\\"ping-google\\\",\\\"mode\\\":\\\"SOT\\\"}]'\\n  generateName: run-chaos\\nspec:\\n  appinfo:\\n    appns: %s\\n    applabel: %s\\n    appkind: deployment\\n  jobCleanUpPolicy: retain\\n  engineState: active\\n  chaosServiceAccount: litmus-admin\\n  experiments:\\n    - name: pod-delete\\n      spec:\\n        components:\\n          env:\\n            - name: TOTAL_CHAOS_DURATION\\n              value: \\\"%d\\\"\\n            - name: CHAOS_INTERVAL\\n              value: \\\"%d\\\"\\n            - name: FORCE\\n              value: \\\"false\\\"\\n"
+                                }
+                            }
+                        ]
+                    },
+                    "metadata": {
+                        "labels": {
+                            "weight": "10"
+                        }
+                    },
+                    "container": {
+                        "name": "",
+                        "image": "docker.io/litmuschaos/litmus-checker:2.11.0",
+                        "args": [
+                            "-file=/tmp/chaosengine-run-chaos.yaml",
+                            "-saveName=/tmp/engine-name"
+                        ],
+                        "resources": {}
+                    }
+                },
+                {
+                    "name": "cleanup-chaos-resources",
+                    "container": {
+                        "image": "litmuschaos/k8s:latest",
+                        "command": [
+                            "sh",
+                            "-c"
+                        ],
+                        "args": [
+                            "kubectl delete chaosengine -l workflow_run_id={{workflow.uid}} -n {{workflow.parameters.adminModeNamespace}}"
+                        ],
+                        "resources": {}
+                    }
+                }
+            ]
+        },
+        "status": {}
+    }`, 
+    details.ExperimentName, // metadata.name
+    details.ChaosNamespace, // metadata.namespace
+    details.ConnectedInfraID, // metadata.labels.infra_id
+    experimentID, // metadata.labels.workflow_id
+    details.ConnectedInfraID, // metadata.labels.workflows.argoproj.io/controller-instanceid
+    details.ChaosNamespace, // adminModeNamespace
+    details.AppNS, // appNamespace
+    details.ChaosDuration, // TOTAL_CHAOS_DURATION in install-chaos-faults
+    details.ChaosInterval, // CHAOS_INTERVAL in install-chaos-faults
+    details.ExperimentName, // workflow_name in run-chaos
+    details.AppNS, // appns in run-chaos
+    details.AppLabel, // applabel in run-chaos
+    details.ChaosDuration, // TOTAL_CHAOS_DURATION in run-chaos
+    details.ChaosInterval) // CHAOS_INTERVAL in run-chaos
 
-	// Fetch YAML template
-	res, err := http.Get(enginePath)
-	if err != nil {
-		klog.Errorf("Failed to fetch the engine template, due to %v", err)
-		return nil, fmt.Errorf("failed to fetch engine template: %w", err)
-	}
-	defer res.Body.Close()
+    // Construct the experiment request
+    experimentRequest := &models.SaveChaosExperimentRequest{
+        ID:          experimentID,
+        Name:        details.ExperimentName,
+        InfraID:     details.ConnectedInfraID,
+        Description: "Test execution via SDK client",
+        Tags:        []string{"ci", "test", "sdk"},
+        Manifest:    workflowManifest,
+    }
 
-	// Read template content
-	fileInput, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		klog.Errorf("Failed to read data from response: %v", err)
-		return nil, fmt.Errorf("failed to read template data: %w", err)
-	}
-
-	// Parse the template
-	var yamlObj interface{}
-	err = yamlChe.Unmarshal(fileInput, &yamlObj)
-	if err != nil {
-		klog.Errorf("Error unmarshalling fetched template: %v", err)
-		return nil, fmt.Errorf("failed to unmarshal template: %w", err)
-	}
-
-	// Convert to map to modify
-	yamlMap, ok := yamlObj.(map[string]interface{})
-	if ok {
-		// Update metadata fields
-		if metadata, metaOk := yamlMap["metadata"].(map[string]interface{}); metaOk {
-			metadata["name"] = details.ExperimentName
-			metadata["namespace"] = details.ChaosNamespace
-		}
-
-		// Update spec fields if needed
-		if spec, specOk := yamlMap["spec"].(map[string]interface{}); specOk {
-			if experiments, expOk := spec["experiments"].([]interface{}); expOk && len(experiments) > 0 {
-				if exp, expItemOk := experiments[0].(map[string]interface{}); expItemOk {
-					// Set experiment name
-					exp["name"] = details.ExperimentName
-					
-					// Update app info if present
-					if appinfo, appOk := exp["spec"].(map[string]interface{}); appOk {
-						if app, targetOk := appinfo["appinfo"].(map[string]interface{}); targetOk {
-							app["appns"] = details.AppNS
-							app["applabel"] = details.AppLabel
-						}
-					}
-				}
-			}
-		}
-
-		// Marshal back to YAML
-		finalManifestBytes, errMarshal := yamlChe.Marshal(yamlMap)
-		if errMarshal != nil {
-			klog.Errorf("Error marshalling modified template: %v", errMarshal)
-			return nil, fmt.Errorf("failed to marshal modified template: %w", errMarshal)
-		}
-		finalManifestString = string(finalManifestBytes)
-	}
-
-	// Construct the experiment request
-	experimentRequest := &models.SaveChaosExperimentRequest{
-		ID:          experimentID,
-		Name:        details.ExperimentName,
-		InfraID:     details.ConnectedInfraID,
-		Description: "Test execution via SDK client",
-		Tags:        []string{"ci", "test", "sdk"},
-		Manifest:    finalManifestString,
-	}
-
-	return experimentRequest, nil
+    return experimentRequest, nil
 }
 
