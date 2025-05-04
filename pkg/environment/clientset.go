@@ -56,13 +56,15 @@ func (clientSets *ClientSets) GenerateClientSetFromSDK() error {
 	clientSets.LitmusPassword = password 
 	clientSets.LitmusProjectID = projectID
 
-	if credProvider, ok := sdkClient.(interface{ GetCredentials() types.Credentials }); ok {
-		creds := credProvider.GetCredentials()
-		clientSets.LitmusToken = creds.Token 
-		clientSets.LitmusProjectID = creds.ProjectID 
-	} else {
-		klog.Warningf("Could not retrieve credentials/token from SDK client type %T", sdkClient)
-	}
+	// Get the token using the Auth() method
+    token := sdkClient.Auth().GetToken()
+    if token != "" {
+        clientSets.LitmusToken = token
+        klog.Infof("Successfully retrieved token from SDK client")
+    } else {
+        klog.Warningf("Could not retrieve token from SDK client Auth().GetToken()")
+        return errors.New("Failed to retrieve token from SDK client")
+    }
 
 	return nil
 }

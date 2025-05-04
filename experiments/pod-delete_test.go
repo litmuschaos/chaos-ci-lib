@@ -40,9 +40,9 @@ var _ = Describe("BDD of running pod-delete experiment", func() {
 			err = nil
 
 			//Getting kubeConfig and Generate ClientSets
-			By("[PreChaos]: Getting kubeconfig and generate clientset")
-			err = clients.GenerateClientSetFromKubeConfig()
-			Expect(err).To(BeNil(), "Unable to Get the kubeconfig, due to {%v}", err)
+			// By("[PreChaos]: Getting kubeconfig and generate clientset")
+			// err = clients.GenerateClientSetFromKubeConfig()
+			// Expect(err).To(BeNil(), "Unable to Get the kubeconfig, due to {%v}", err)
 
 			//Fetching all the default ENV
 			By("[PreChaos]: Fetching all default ENVs")
@@ -57,6 +57,10 @@ var _ = Describe("BDD of running pod-delete experiment", func() {
 			// Setup infrastructure using the new module
 			By("[PreChaos]: Setting up infrastructure")
 			err = infrastructure.SetupInfrastructure(&experimentsDetails, &clients)
+			if experimentsDetails.ConnectedInfraID == "" && experimentsDetails.UseExistingInfra && experimentsDetails.ExistingInfraID != "" {
+				experimentsDetails.ConnectedInfraID = experimentsDetails.ExistingInfraID
+				klog.Infof("Manually set ConnectedInfraID to %s from ExistingInfraID", experimentsDetails.ConnectedInfraID)
+			}
 			Expect(err).To(BeNil(), "Failed to setup infrastructure, due to {%v}", err)
 			
 			// Validate that infrastructure ID is properly set
@@ -211,7 +215,7 @@ func ConstructPodDeleteExperimentRequest(details *types.ExperimentDetails, exper
                                 "name": "install-chaos-faults",
                                 "path": "/tmp/pod-delete.yaml",
                                 "raw": {
-                                    "data": "apiVersion: litmuschaos.io/v1alpha1\\ndescription:\\n  message: |\\n    Deletes a pod belonging to a deployment/statefulset/daemonset\\nkind: ChaosExperiment\\nmetadata:\\n  name: pod-delete\\nspec:\\n  definition:\\n    scope: Namespaced\\n    permissions:\\n      - apiGroups:\\n          - \\\"\\\"\\n          - \\\"apps\\\"\\n          - \\\"batch\\\"\\n          - \\\"litmuschaos.io\\\"\\n        resources:\\n          - \\\"deployments\\\"\\n          - \\\"jobs\\\"\\n          - \\\"pods\\\"\\n          - \\\"pods/log\\\"\\n          - \\\"events\\\"\\n          - \\\"configmaps\\\"\\n          - \\\"chaosengines\\\"\\n          - \\\"chaosexperiments\\\"\\n          - \\\"chaosresults\\\"\\n        verbs:\\n          - \\\"create\\\"\\n          - \\\"list\\\"\\n          - \\\"get\\\"\\n          - \\\"patch\\\"\\n          - \\\"update\\\"\\n          - \\\"delete\\\"\\n      - apiGroups:\\n          - \\\"\\\"\\n        resources:\\n          - \\\"nodes\\\"\\n        verbs:\\n          - \\\"get\\\"\\n          - \\\"list\\\"\\n    image: \\\"litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0\\\"\\n    imagePullPolicy: Always\\n    args:\\n    - -c\\n    - ./experiments -name pod-delete\\n    command:\\n    - /bin/bash\\n    env:\\n\\n    - name: TOTAL_CHAOS_DURATION\\n      value: '%d'\\n\\n    # Period to wait before and after injection of chaos in sec\\n    - name: RAMP_TIME\\n      value: ''\\n\\n    # provide the kill count\\n    - name: KILL_COUNT\\n      value: '%d'\\n\\n    - name: FORCE\\n      value: 'true'\\n\\n    - name: CHAOS_INTERVAL\\n      value: '%d'\\n\\n    labels:\\n      name: pod-delete\\n"
+                                    "data": "apiVersion: litmuschaos.io/v1alpha1\\ndescription:\\n  message: |\\n    Deletes a pod belonging to a deployment/statefulset/daemonset\\nkind: ChaosExperiment\\nmetadata:\\n  name: pod-delete\\nspec:\\n  definition:\\n    scope: Namespaced\\n    permissions:\\n      - apiGroups:\\n          - \\\"\\\"\\n          - \\\"apps\\\"\\n          - \\\"batch\\\"\\n          - \\\"litmuschaos.io\\\"\\n        resources:\\n          - \\\"deployments\\\"\\n          - \\\"jobs\\\"\\n          - \\\"pods\\\"\\n          - \\\"pods/log\\\"\\n          - \\\"events\\\"\\n          - \\\"configmaps\\\"\\n          - \\\"chaosengines\\\"\\n          - \\\"chaosexperiments\\\"\\n          - \\\"chaosresults\\\"\\n        verbs:\\n          - \\\"create\\\"\\n          - \\\"list\\\"\\n          - \\\"get\\\"\\n          - \\\"patch\\\"\\n          - \\\"update\\\"\\n          - \\\"delete\\\"\\n      - apiGroups:\\n          - \\\"\\\"\\n        resources:\\n          - \\\"nodes\\\"\\n        verbs:\\n          - \\\"get\\\"\\n          - \\\"list\\\"\\n    image: \\\"litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0\\\"\\n    imagePullPolicy: Always\\n    args:\\n    - -c\\n    - ./experiments -name pod-delete\\n    command:\\n    - /bin/bash\\n    env:\\n\\n    - name: TOTAL_CHAOS_DURATION\\n      value: '%s'\\n\\n    # Period to wait before and after injection of chaos in sec\\n    - name: RAMP_TIME\\n      value: ''\\n\\n    # provide the kill count\\n    - name: KILL_COUNT\\n      value: '%s'\\n\\n    - name: FORCE\\n      value: 'true'\\n\\n    - name: CHAOS_INTERVAL\\n      value: '%s'\\n\\n    labels:\\n      name: pod-delete\\n"
                                 }
                             }
                         ]
@@ -236,7 +240,7 @@ func ConstructPodDeleteExperimentRequest(details *types.ExperimentDetails, exper
                                 "name": "run-chaos",
                                 "path": "/tmp/chaosengine-run-chaos.yaml",
                                 "raw": {
-                                    "data": "apiVersion: litmuschaos.io/v1alpha1\\nkind: ChaosEngine\\nmetadata:\\n  namespace: \\\"{{workflow.parameters.adminModeNamespace}}\\\"\\n  labels:\\n    context: \\\"{{workflow.parameters.appNamespace}}_pod-delete\\\"\\n    workflow_run_id: \\\"{{ workflow.uid }}\\\"\\n    workflow_name: %s\\n  annotations:\\n    probeRef: '[{\\\"name\\\":\\\"ping-google\\\",\\\"mode\\\":\\\"SOT\\\"}]'\\n  generateName: run-chaos\\nspec:\\n  appinfo:\\n    appns: %s\\n    applabel: %s\\n    appkind: deployment\\n  jobCleanUpPolicy: retain\\n  engineState: active\\n  chaosServiceAccount: litmus-admin\\n  experiments:\\n    - name: pod-delete\\n      spec:\\n        components:\\n          env:\\n            - name: TOTAL_CHAOS_DURATION\\n              value: \\\"%d\\\"\\n            - name: CHAOS_INTERVAL\\n              value: \\\"%d\\\"\\n            - name: FORCE\\n              value: \\\"false\\\"\\n"
+                                    "data": "apiVersion: litmuschaos.io/v1alpha1\\nkind: ChaosEngine\\nmetadata:\\n  namespace: \\\"{{workflow.parameters.adminModeNamespace}}\\\"\\n  labels:\\n    context: \\\"{{workflow.parameters.appNamespace}}_pod-delete\\\"\\n    workflow_run_id: \\\"{{ workflow.uid }}\\\"\\n    workflow_name: %s\\n  annotations:\\n    probeRef: '[{\\\"name\\\":\\\"ping-google\\\",\\\"mode\\\":\\\"SOT\\\"}]'\\n  generateName: run-chaos\\nspec:\\n  appinfo:\\n    appns: %s\\n    applabel: %s\\n    appkind: deployment\\n  jobCleanUpPolicy: retain\\n  engineState: active\\n  chaosServiceAccount: litmus-admin\\n  experiments:\\n    - name: pod-delete\\n      spec:\\n        components:\\n          env:\\n            - name: TOTAL_CHAOS_DURATION\\n              value: \\\"%s\\\"\\n            - name: CHAOS_INTERVAL\\n              value: \\\"%s\\\"\\n            - name: FORCE\\n              value: \\\"false\\\"\\n"
                                 }
                             }
                         ]
@@ -281,13 +285,14 @@ func ConstructPodDeleteExperimentRequest(details *types.ExperimentDetails, exper
     details.ConnectedInfraID, // metadata.labels.workflows.argoproj.io/controller-instanceid
     details.ChaosNamespace, // adminModeNamespace
     details.AppNS, // appNamespace
-    details.ChaosDuration, // TOTAL_CHAOS_DURATION in install-chaos-faults
-    details.ChaosInterval, // CHAOS_INTERVAL in install-chaos-faults
+    fmt.Sprintf("%d", details.ChaosDuration), // TOTAL_CHAOS_DURATION in install-chaos-faults
+    fmt.Sprintf("%d", details.ChaosInterval), // KILL_COUNT in install-chaos-faults
+    fmt.Sprintf("%d", details.ChaosInterval), // CHAOS_INTERVAL in install-chaos-faults
     details.ExperimentName, // workflow_name in run-chaos
     details.AppNS, // appns in run-chaos
     details.AppLabel, // applabel in run-chaos
-    details.ChaosDuration, // TOTAL_CHAOS_DURATION in run-chaos
-    details.ChaosInterval) // CHAOS_INTERVAL in run-chaos
+    fmt.Sprintf("%d", details.ChaosDuration), // TOTAL_CHAOS_DURATION in run-chaos
+    fmt.Sprintf("%d", details.ChaosInterval)) // CHAOS_INTERVAL in run-chaos
 
     // Construct the experiment request
     experimentRequest := &models.SaveChaosExperimentRequest{
