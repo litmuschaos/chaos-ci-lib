@@ -78,6 +78,7 @@ require (
 // Pinned to kubernetes-1.16.2
 replace (
 	github.com/docker/docker => github.com/moby/moby v0.7.3-0.20190826074503-38ab9da00309
+	github.com/go-openapi/spec => github.com/go-openapi/spec v0.19.5
 	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.3.1
 	github.com/litmuschaos/chaos-operator => github.com/litmuschaos/chaos-operator v0.0.0-20210610071657-a58dbd939e73
 	k8s.io/api => k8s.io/api v0.0.0-20191016110408-35e52d86657a
@@ -94,6 +95,7 @@ replace (
 	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.0.0-20191016115521-756ffa5af0bd
 	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.0.0-20191016112429-9587704a8ad4
 	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.0.0-20191016114939-2b2b218dc1df
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20200805222855-6aeccd4b50c6
 	k8s.io/kube-proxy => k8s.io/kube-proxy v0.0.0-20191016114407-2e83b6f20229
 	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.0.0-20191016114748-65049c67a58b
 	k8s.io/kubectl => k8s.io/kubectl v0.0.0-20191016120415-2ed914427d51
