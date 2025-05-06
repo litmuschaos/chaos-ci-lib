@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/litmuschaos/chaos-ci-lib/pkg"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/environment"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/infrastructure"
@@ -75,14 +74,16 @@ var _ = Describe("BDD of running pod-delete experiment", func() {
 			Expect(err).To(BeNil(), "Error during BeforeEach setup: %v", err)
 			klog.Info("Executing V3 SDK Path for Experiment")
 
-			// 1. Construct Experiment Request
-			By("[SDK Prepare]: Constructing Chaos Experiment Request")
-			experimentName := experimentsDetails.EngineName
-			experimentID :=  uuid.New().String()[:8]
-			experimentRequest, errConstruct := ConstructPodDeleteExperimentRequest(&experimentsDetails, experimentID , experimentName)
-			Expect(errConstruct).To(BeNil(), "Failed to construct experiment request: %v", errConstruct)
 
-			// 2. Create and Run Experiment via SDK
+            // 1. Construct Experiment Request
+            By("[SDK Prepare]: Constructing Chaos Experiment Request")
+            experimentName := pkg.GenerateUniqueExperimentName("pod-delete")
+            experimentsDetails.ExperimentName = experimentName
+            experimentID := pkg.GenerateExperimentID()
+            experimentRequest, errConstruct := ConstructPodDeleteExperimentRequest(&experimentsDetails, experimentID, experimentName)
+            Expect(errConstruct).To(BeNil(), "Failed to construct experiment request: %v", errConstruct)
+
+            // 2. Create and Run Experiment via SDK
 			By("[SDK Prepare]: Creating and Running Chaos Experiment")
 			creds := clients.GetSDKCredentials()
 			saveResponse, errRun := experiment.SaveExperiment(clients.LitmusProjectID, *experimentRequest, creds)
@@ -152,24 +153,13 @@ var _ = Describe("BDD of running pod-delete experiment", func() {
 // Create Argo Workflow manifest for Litmus 3.0
 func ConstructPodDeleteExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
     klog.Infof("Constructing experiment request for %s with ID %s", details.ExperimentName, experimentID)
-
-    // Use the requested name consistently
-    uniqueExperimentName := experimentName
-    klog.Infof("Using unique experiment name: %s", uniqueExperimentName)
-
     // Create manifest directly with proper JSON escaping for YAML content
     const workflowManifest = `{
         "apiVersion": "argoproj.io/v1alpha1",
         "kind": "Workflow",
         "metadata": {
             "name": "test-experiment",
-            "namespace": "litmus-2",
-            "labels": {
-                "infra_id": "26ba9da1-19b5-4093-a9e4-0862517188c1",
-                "revision_id": "43e13442-f607-4d01-82ac-7f226b563ca6",
-                "workflow_id": "pod-delete-engine-db2a5251",
-                "workflows.argoproj.io/controller-instanceid": "26ba9da1-19b5-4093-a9e4-0862517188c1"
-            }
+            "namespace": "litmus-2"
         },
         "spec": {
             "entrypoint": "pod-delete-engine",
@@ -301,7 +291,7 @@ func ConstructPodDeleteExperimentRequest(details *types.ExperimentDetails, exper
     // 1. Update the metadata.name field to use akash-crazy
     metadata, ok := manifestObj["metadata"].(map[string]interface{})
     if ok {
-        metadata["name"] = uniqueExperimentName
+        metadata["name"] = experimentName
     }
     
     // 2. Update workflow_name in the ChaosEngine template
@@ -327,12 +317,10 @@ func ConstructPodDeleteExperimentRequest(details *types.ExperimentDetails, exper
                                 if ok {
                                     data, ok := raw["data"].(string)
                                     if ok {
-                                        // Fix: Replace the correct string "workflow_name: test-experiment"
-                                        // This was previously looking for the wrong string pattern
                                         updatedData := strings.Replace(
                                             data,
                                             "workflow_name: test-experiment",
-                                            fmt.Sprintf("workflow_name: %s", uniqueExperimentName),
+                                            fmt.Sprintf("workflow_name: %s", experimentName),
                                             -1,
                                         )
                                         raw["data"] = updatedData
@@ -352,10 +340,12 @@ func ConstructPodDeleteExperimentRequest(details *types.ExperimentDetails, exper
         return nil, err
     }
     
+    klog.Infof("Updated manifest: %s", string(updatedManifest))
+    
     // Construct the experiment request with akash-crazy as the name
     experimentRequest := &models.SaveChaosExperimentRequest{
         ID:          experimentID,
-        Name:        uniqueExperimentName,  // Using akash-crazy here too
+        Name:        experimentName,  
         InfraID:     details.ConnectedInfraID,
         Description: "Pod delete chaos experiment execution",
         Tags:        []string{"pod", "chaos", "litmus"},
