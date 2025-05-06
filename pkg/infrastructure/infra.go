@@ -7,7 +7,6 @@ import (
 
 	"github.com/litmuschaos/chaos-ci-lib/pkg/environment"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/types"
-	models "github.com/litmuschaos/litmus/chaoscenter/graphql/server/graph/model"
 	"k8s.io/klog"
 )
 
@@ -65,30 +64,21 @@ func ConnectInfrastructure(experimentsDetails *types.ExperimentDetails, clients 
 	}
 
 	// Create infrastructure via SDK
-	infraData, errSdk := clients.SDKClient.Infrastructure().Create(experimentsDetails.InfraName, sdkConfig)
+	infraID, errSdk := clients.SDKClient.Infrastructure().Create(experimentsDetails.InfraName, sdkConfig)
 	if errSdk != nil {
 		return errSdk
 	}
 
 	// Process response and extract infra ID
-	if infraData == nil {
+	if infraID == "" {
 		return errors.New("infrastructure create call returned nil data")
 	}
 
-	registerResponse, ok := infraData.(*models.RegisterInfraResponse)
-	if !ok {
-		return errors.New("could not assert type to RegisterInfraResponse")
-	}
+	experimentsDetails.ConnectedInfraID = infraID
+	klog.Infof("Successfully connected infrastructure via SDK. Stored ID: %s", experimentsDetails.ConnectedInfraID)
 
-	if registerResponse == nil {
-		return errors.New("registerInfraResponse is nil after type assertion")
-	}
 
-	if registerResponse.InfraID == "" {
-		return errors.New("extracted InfraID is empty")
-	}
-
-	experimentsDetails.ConnectedInfraID = registerResponse.InfraID
+	experimentsDetails.ConnectedInfraID = infraID
 	klog.Infof("Successfully connected infrastructure via SDK. Stored ID: %s", experimentsDetails.ConnectedInfraID)
 	
 	return nil
