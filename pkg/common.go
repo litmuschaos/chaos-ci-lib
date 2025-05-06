@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 
+	"github.com/google/uuid"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/environment"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/log"
 	"github.com/pkg/errors"
@@ -50,4 +51,21 @@ func (envDetails *ENVDetails) SetEnv(key, value string) *ENVDetails {
 		envDetails.ENV[key] = value
 	}
 	return envDetails
+}
+
+// GenerateUniqueExperimentName creates a unique experiment name by combining
+// a base name with a unique identifier. This ensures there are no naming
+// conflicts between experiment runs
+func GenerateUniqueExperimentName(baseName string) string {
+	// Generate a short UUID (first 8 characters)
+	uniqueID := uuid.New().String()[:8]
+	return fmt.Sprintf("%s-%s", baseName, uniqueID)
+}
+
+// GenerateExperimentIDs creates all necessary IDs for a chaos experiment
+// including workflow name, experiment ID, and other related identifiers.
+func GenerateExperimentID() (string) {
+	// Generate a unique ID for the experiment
+	experimentID := uuid.New().String()[:8]
+	return experimentID
 }

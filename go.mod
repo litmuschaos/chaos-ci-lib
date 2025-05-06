@@ -81,6 +81,7 @@ replace (
 	github.com/go-openapi/spec => github.com/go-openapi/spec v0.19.5
 	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.3.1
 	github.com/litmuschaos/chaos-operator => github.com/litmuschaos/chaos-operator v0.0.0-20210610071657-a58dbd939e73
+	github.com/litmuschaos/litmus-go-sdk => ../litmus-go-sdk //TO remove after litmus-go-sdk is published
 	k8s.io/api => k8s.io/api v0.0.0-20191016110408-35e52d86657a
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20191016113550-5357c4baaf65
 	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20191004115801-a2eda9f80ab8
