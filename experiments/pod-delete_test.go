@@ -86,17 +86,33 @@ var _ = Describe("BDD of running pod-delete experiment", func() {
             // 2. Create and Run Experiment via SDK
 			By("[SDK Prepare]: Creating and Running Chaos Experiment")
 			creds := clients.GetSDKCredentials()
-			saveResponse, errRun := experiment.SaveExperiment(clients.LitmusProjectID, *experimentRequest, creds)
-			Expect(errRun).To(BeNil(), "Failed to save experiment via SDK: %v", errRun)
-            klog.Infof("Experiment saved successfully via SDK. Experiment ID: %s", saveResponse)
-            runResponse, errRu2 := experiment.RunExperiment(clients.LitmusProjectID, experimentID, creds)
-            Expect(errRu2).To(BeNil(), "Failed to run experiment via SDK: %v", errRu2)
-            klog.Infof("Experiment run successfully via SDK. Experiment ID: %s", runResponse)
-            // klog.Infof("Experiment saved successfully via SDK. Experiment ID: %s", runResponse)
-			// Expect(runResponse.Data.RunExperimentDetails.NotifyID).NotTo(BeEmpty(), "Experiment Run ID (NotifyID) should not be empty")
-			// experimentsDetails.ExperimentRunID = runResponse.Data.ExperimentDetails.ExperimentID
-			klog.Infof("Experiment Run successfully triggered via SDK. Experiment ID: %s",experimentID)
-
+            _ , err := experiment.CreateExperiment(clients.LitmusProjectID, *experimentRequest, creds)
+            Expect(err).To(BeNil(), "Failed to create experiment via SDK: %v", err)
+            _, errRun := experiment.RunExperiment(clients.LitmusProjectID, experimentID, creds)
+            Expect(errRun).To(BeNil(), "Failed to run experiment via SDK: %v", errRun)
+           
+            By("[SDK Query]: Fetching latest experiment run ID")
+            // Get experiment runs for this experiment
+            runsList, err := experiment.GetExperimentRunsList(
+                clients.LitmusProjectID, 
+                models.ListExperimentRunRequest{
+                    ExperimentIDs: []*string{&experimentID},
+                    Pagination: &models.Pagination{
+                        Page: 1,
+                        Limit: 1,
+                    },
+                }, 
+                creds,
+            )
+            Expect(err).To(BeNil(), "Failed to fetch experiment runs: %v", err)
+    
+            if len(runsList.ListExperimentRunDetails.ExperimentRuns) > 0 {
+                experimentsDetails.ExperimentRunID = runsList.ListExperimentRunDetails.ExperimentRuns[0].ExperimentRunID
+                klog.Infof("Latest experiment run ID: %s", experimentsDetails.ExperimentRunID)
+            } else {
+                Fail("No experiment runs found for experiment: " + experimentID)
+            }
+            
 			// 3. Poll for Experiment Run Status
 			By("[SDK Status]: Polling for Experiment Run Status")
 			var finalPhase string
@@ -118,11 +134,11 @@ var _ = Describe("BDD of running pod-delete experiment", func() {
 						klog.Errorf("Error fetching experiment run status for %s: %v", experimentsDetails.ExperimentRunID, errStatus)
 						continue
 					}
-					currentPhase := runStatus.Data.ExperimentRun.Phase
+					currentPhase := runStatus.ExperimentRun.Phase
 					klog.Infof("Experiment Run %s current phase: %s", experimentsDetails.ExperimentRunID, currentPhase)
 					finalPhases := []string{"Completed", "Completed_With_Error", "Failed", "Error", "Stopped", "Skipped", "Aborted", "Timeout", "Terminated"}
-					if pkg.ContainsString(finalPhases, currentPhase) {
-						finalPhase = currentPhase
+					if pkg.ContainsString(finalPhases, string(currentPhase)) {
+						finalPhase = string(currentPhase)
 						klog.Infof("Experiment Run %s reached final phase: %s", experimentsDetails.ExperimentRunID, currentPhase)
 						break pollLoop
 					}
@@ -149,8 +165,7 @@ var _ = Describe("BDD of running pod-delete experiment", func() {
 
 // Create Argo Workflow manifest for Litmus 3.0
 //This replaces the approach of calling the litmus-workflows-api to get the workflow manifest
-// Not sure if this is the best way to do it, need confirmation from mentors
-// Create Argo Workflow manifest for Litmus 3.0
+// This needs to be updated to use GO templated and add in many many values dynamically
 func ConstructPodDeleteExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
     klog.Infof("Constructing experiment request for %s with ID %s", details.ExperimentName, experimentID)
     // Create manifest directly with proper JSON escaping for YAML content
@@ -340,8 +355,6 @@ func ConstructPodDeleteExperimentRequest(details *types.ExperimentDetails, exper
         return nil, err
     }
     
-    klog.Infof("Updated manifest: %s", string(updatedManifest))
-    
     // Construct the experiment request with akash-crazy as the name
     experimentRequest := &models.SaveChaosExperimentRequest{
         ID:          experimentID,
@@ -354,3 +367,4 @@ func ConstructPodDeleteExperimentRequest(details *types.ExperimentDetails, exper
 
     return experimentRequest, nil
 }
+

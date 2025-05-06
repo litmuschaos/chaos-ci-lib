@@ -48,8 +48,8 @@ type ExperimentDetails struct {
 	PodsAffectedPerc                   int
 	NodesAffectedPerc                  int
 	Replicas                           int
-	ExperimentTimeout                  int // Duration in minutes for experiment timeout
-	ExperimentPollingInterval          int // Duration in seconds for polling interval
+	ExperimentTimeout                  int 
+	ExperimentPollingInterval          int 
 
 	// V3 SDK Related Fields
 	InstallLitmusFlag          bool
