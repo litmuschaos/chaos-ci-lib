@@ -1,244 +1,652 @@
 package workflow
 
 import (
-	"bytes"
+	"encoding/json"
 	"fmt"
-	"text/template"
+	"strings"
 
 	"github.com/litmuschaos/chaos-ci-lib/pkg/types"
 	models "github.com/litmuschaos/litmus/chaoscenter/graphql/server/graph/model"
 )
 
+// ExperimentType defines the available chaos experiment types
+type ExperimentType string
+
+const (
+	PodDelete    ExperimentType = "pod-delete"
+	PodCPUHog    ExperimentType = "pod-cpu-hog"
+	PodMemoryHog ExperimentType = "pod-memory-hog"
+	// Add more experiment types as needed
+)
+
 // ExperimentConfig holds configuration for an experiment
 type ExperimentConfig struct {
-	AppNamespace  string
-	AppLabel      string
-	AppKind       string
-	ChaosDuration string
-	ChaosInterval string
-	Description   string
-	Tags          []string
-	// Additional fields can be added as needed for different experiments
+	AppNamespace      string
+	AppLabel          string
+	AppKind           string
+	ChaosDuration     string
+	ChaosInterval     string
+	Description       string
+	Tags              []string
+	
+	// Common parameters
+	TargetContainer   string
+	PodsAffectedPerc  string
+	RampTime          string
+	
+	// CPU hog specific parameters
+	CPUCores          string
+	
+	// Memory hog specific parameters
+	MemoryConsumption string
 }
 
 // GetDefaultExperimentConfig returns default configuration for a given experiment type
-func GetDefaultExperimentConfig(experimentType string) ExperimentConfig {
+func GetDefaultExperimentConfig(experimentType ExperimentType) ExperimentConfig {
 	config := ExperimentConfig{
-		AppNamespace:  "litmus-2",
-		AppLabel:      "app=nginx",
-		AppKind:       "deployment",
-		ChaosDuration: "15",
-		ChaosInterval: "5",
-		Description:   experimentType + " chaos experiment execution",
-		Tags:          []string{experimentType, "chaos", "litmus"},
+		AppNamespace:     "litmus-2",
+		AppLabel:         "app=nginx",
+		AppKind:          "deployment",
+		PodsAffectedPerc: "",
+		RampTime:         "",
+		TargetContainer:  "",
+	}
+	
+	// Apply experiment-specific defaults
+	switch experimentType {
+	case PodDelete:
+		config.ChaosDuration = "15"
+		config.ChaosInterval = "5"
+		config.Description = "Pod delete chaos experiment execution"
+		config.Tags = []string{"pod-delete", "chaos", "litmus"}
+	
+	case PodCPUHog:
+		config.ChaosDuration = "30"
+		config.ChaosInterval = "10"
+		config.CPUCores = "1"
+		config.Description = "Pod CPU hog chaos experiment execution"
+		config.Tags = []string{"pod-cpu-hog", "chaos", "litmus"}
+	
+	case PodMemoryHog:
+		config.ChaosDuration = "30"
+		config.ChaosInterval = "10"
+		config.MemoryConsumption = "500"
+		config.Description = "Pod memory hog chaos experiment execution"
+		config.Tags = []string{"pod-memory-hog", "chaos", "litmus"}
 	}
 	
 	return config
 }
 
-// ConstructExperimentRequest creates an Argo Workflow manifest for Litmus 3.0
-func ConstructExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string, experimentType string, experimentConfig ExperimentConfig) (*models.SaveChaosExperimentRequest, error) {
-	// Get workflow template based on experiment type and configuration
-	workflowTemplate, err := GetWorkflowTemplate(experimentType, experimentConfig)
+// ConstructExperimentRequest creates an Argo Workflow manifest for LitmusChaos
+func ConstructExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string, experimentType ExperimentType, config ExperimentConfig) (*models.SaveChaosExperimentRequest, error) {
+	// Get base workflow manifest for the experiment type
+	manifest, err := GetExperimentManifest(experimentType, experimentName, config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get workflow template: %v", err)
+		return nil, fmt.Errorf("failed to get experiment manifest: %v", err)
 	}
-	
-	// Define template data structure
-	type WorkflowTemplateData struct {
-		ExperimentName         string
-		AppNamespace           string
-		AppLabel               string
-		AppKind                string
-		ChaosDuration          string
-		ChaosInterval          string
-		WorkflowUID            string
-		WorkflowAdminNamespace string
-		ExperimentType         string
-	}
-	
-	// Populate template data with defaults or values from details
-	data := WorkflowTemplateData{
-		ExperimentName:         experimentName,
-		ExperimentType:         experimentType,
-		AppNamespace:           experimentConfig.AppNamespace,
-		AppLabel:               experimentConfig.AppLabel,
-		AppKind:                experimentConfig.AppKind,
-		ChaosDuration:          experimentConfig.ChaosDuration,
-		ChaosInterval:          experimentConfig.ChaosInterval,
-		WorkflowUID:            "{{ workflow.uid }}", 
-		WorkflowAdminNamespace: "{{workflow.parameters.adminModeNamespace}}", 
-	}
-	
-	// Parse the template
-	tmpl, err := template.New("workflow").Parse(workflowTemplate)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse workflow template: %v", err)
-	}
-	
-	// Execute the template with our data
-	var manifestBuffer bytes.Buffer
-	if err := tmpl.Execute(&manifestBuffer, data); err != nil {
-		return nil, fmt.Errorf("failed to execute workflow template: %v", err)
-	}
-	
+
 	// Construct the experiment request
 	experimentRequest := &models.SaveChaosExperimentRequest{
 		ID:          experimentID,
-		Name:        experimentName,  
+		Name:        experimentName,
 		InfraID:     details.ConnectedInfraID,
-		Description: experimentConfig.Description,
-		Tags:        experimentConfig.Tags,
-		Manifest:    manifestBuffer.String(),
+		Description: config.Description,
+		Tags:        config.Tags,
+		Manifest:    manifest,
 	}
 
 	return experimentRequest, nil
 }
 
-// GetWorkflowTemplate returns the workflow template for a given experiment type
-func GetWorkflowTemplate(experimentType string, config ExperimentConfig) (string, error) {
-	// Map of templates for different experiment types
-	templates := map[string]string{
-		"pod-delete": `{
+// GetExperimentManifest returns the complete workflow manifest string for a given experiment type
+func GetExperimentManifest(experimentType ExperimentType, experimentName string, config ExperimentConfig) (string, error) {
+	// Base workflow structure that's common for all experiments
+	baseManifest := map[string]interface{}{
 		"apiVersion": "argoproj.io/v1alpha1",
-		"kind": "Workflow",
-		"metadata": {
-			"name": "{{.ExperimentName}}",
-			"namespace": "litmus-2"
+		"kind":       "Workflow",
+		"metadata": map[string]interface{}{
+			"name":      experimentName,
+			"namespace": "litmus-2",
 		},
-		"spec": {
-			"entrypoint": "{{.ExperimentType}}-engine",
+		"spec": map[string]interface{}{
+			"entrypoint":         string(experimentType) + "-engine",
 			"serviceAccountName": "argo-chaos",
-			"podGC":{
-				"strategy": "OnWorkflowCompletion"
+			"podGC": map[string]string{
+				"strategy": "OnWorkflowCompletion",
 			},
-			"securityContext": {
-				"runAsUser": 1000,
-				"runAsNonRoot": true
+			"securityContext": map[string]interface{}{
+				"runAsUser":    1000,
+				"runAsNonRoot": true,
 			},
-			"arguments": {
-				"parameters": [
+			"arguments": map[string]interface{}{
+				"parameters": []map[string]string{
 					{
-						"name": "adminModeNamespace",
-						"value": "litmus-2"
-					}
-				]
+						"name":  "adminModeNamespace",
+						"value": "litmus-2",
+					},
+				},
 			},
-			"templates": [
+			"templates": []map[string]interface{}{
+				// Main workflow template
 				{
-					"name": "{{.ExperimentType}}-engine",
-					"steps": [
-						[
+					"name": string(experimentType) + "-engine",
+					"steps": [][]map[string]interface{}{
+						{
 							{
-								"name": "install-chaos-faults",
-								"template": "install-chaos-faults"
-							}
-						],
-						[
+								"name":     "install-chaos-faults",
+								"template": "install-chaos-faults",
+								"arguments": map[string]interface{}{},
+							},
+						},
+						{
 							{
-								"name": "{{.ExperimentType}}-ce5",
-								"template": "{{.ExperimentType}}-ce5"
-							}
-						],
-						[
+								"name":     string(experimentType) + "-ce5",
+								"template": string(experimentType) + "-ce5",
+								"arguments": map[string]interface{}{},
+							},
+						},
+						{
 							{
-								"name": "cleanup-chaos-resources",
-								"template": "cleanup-chaos-resources"
-							}
-						]
-					]
-				},
-				{
-					"name": "install-chaos-faults",
-					"inputs": {
-						"artifacts": [
-							{
-								"name": "{{.ExperimentType}}-ce5",
-								"path": "/tmp/{{.ExperimentType}}-ce5.yaml",
-								"raw": {
-									"data": "apiVersion: litmuschaos.io/v1alpha1\ndescription:\n  message: |\n    Deletes a pod belonging to a deployment/statefulset/daemonset\nkind: ChaosExperiment\nmetadata:\n  name: {{.ExperimentType}}\nspec:\n  definition:\n    scope: Namespaced\n    permissions:\n      - apiGroups:\n          - \"\"\n        resources:\n          - pods\n        verbs:\n          - create\n          - delete\n          - get\n          - list\n          - patch\n          - update\n          - deletecollection\n      - apiGroups:\n          - \"\"\n        resources:\n          - events\n        verbs:\n          - create\n          - get\n          - list\n          - patch\n          - update\n      - apiGroups:\n          - \"\"\n        resources:\n          - configmaps\n        verbs:\n          - get\n          - list\n      - apiGroups:\n          - \"\"\n        resources:\n          - pods/log\n        verbs:\n          - get\n          - list\n          - watch\n      - apiGroups:\n          - \"\"\n        resources:\n          - pods/exec\n        verbs:\n          - get\n          - list\n          - create\n      - apiGroups:\n          - apps\n        resources:\n          - deployments\n          - statefulsets\n          - replicasets\n          - daemonsets\n        verbs:\n          - list\n          - get\n      - apiGroups:\n          - apps.openshift.io\n        resources:\n          - deploymentconfigs\n        verbs:\n          - list\n          - get\n      - apiGroups:\n          - \"\"\n        resources:\n          - replicationcontrollers\n        verbs:\n          - get\n          - list\n      - apiGroups:\n          - argoproj.io\n        resources:\n          - rollouts\n        verbs:\n          - list\n          - get\n      - apiGroups:\n          - batch\n        resources:\n          - jobs\n        verbs:\n          - create\n          - list\n          - get\n          - delete\n          - deletecollection\n      - apiGroups:\n          - litmuschaos.io\n        resources:\n          - chaosengines\n          - chaosexperiments\n          - chaosresults\n        verbs:\n          - create\n          - list\n          - get\n          - patch\n          - update\n          - delete\n    image: \"litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0\"\n    imagePullPolicy: Always\n    args:\n    - -c\n    - ./experiments -name {{.ExperimentType}}\n    command:\n    - /bin/bash\n    env:\n    - name: TOTAL_CHAOS_DURATION\n      value: '15'\n    - name: RAMP_TIME\n      value: ''\n    - name: KILL_COUNT\n      value: ''\n    - name: FORCE\n      value: 'true'\n    - name: CHAOS_INTERVAL\n      value: '5'\n    labels:\n      name: {{.ExperimentType}}\n"
-								}
-							}
-						]
+								"name":     "cleanup-chaos-resources",
+								"template": "cleanup-chaos-resources",
+								"arguments": map[string]interface{}{},
+							},
+						},
 					},
-					"container": {
-						"name": "",
-						"image": "litmuschaos/k8s:2.11.0",
-						"command": [
-							"sh",
-							"-c"
-						],
-						"args": [
-							"kubectl apply -f /tmp/ -n {{ .WorkflowAdminNamespace }} && sleep 30"
-						],
-						"resources": {}
-					}
 				},
-				{
-					"name": "{{.ExperimentType}}-ce5",
-					"inputs": {
-						"artifacts": [
-							{
-								"name": "{{.ExperimentType}}-ce5",
-								"path": "/tmp/{{.ExperimentType}}-ce5.yaml",
-								"raw": {
-									"data": "apiVersion: litmuschaos.io/v1alpha1\nkind: ChaosEngine\nmetadata:\n  namespace: \"{{ .WorkflowAdminNamespace }}\"\n  labels:\n    workflow_run_id: \"{{ .WorkflowUID }}\"\n    workflow_name: {{.ExperimentName}}\n  annotations:\n    probeRef: '[{\"name\":\"myprobe\",\"mode\":\"SOT\"}]'\n  generateName: {{.ExperimentType}}-ce5\nspec:\n  appinfo:\n    appns: {{.AppNamespace}}\n    applabel: {{.AppLabel}}\n    appkind: {{.AppKind}}\n  engineState: active\n  chaosServiceAccount: litmus-admin\n  experiments:\n    - name: {{.ExperimentType}}\n      spec:\n        components:\n          env:\n            - name: TOTAL_CHAOS_DURATION\n              value: \"{{.ChaosDuration}}\"\n            - name: RAMP_TIME\n              value: \"\"\n            - name: FORCE\n              value: \"true\"\n            - name: CHAOS_INTERVAL\n              value: \"{{.ChaosInterval}}\"\n            - name: PODS_AFFECTED_PERC\n              value: \"\"\n            - name: TARGET_CONTAINER\n              value: \"\"\n            - name: TARGET_PODS\n              value: \"\"\n            - name: DEFAULT_HEALTH_CHECK\n              value: \"false\"\n            - name: NODE_LABEL\n              value: \"\"\n            - name: SEQUENCE\n              value: parallel\n"
-								}
-							}
-						]
-					},
-					"outputs": {},
-					"metadata": {
-						"labels": {
-							"weight": "10"
-						}
-					},
-					"container": {
-						"name": "",
-						"image": "docker.io/litmuschaos/litmus-checker:2.11.0",
-						"args": [
-							"-file=/tmp/{{.ExperimentType}}-ce5.yaml",
-							"-saveName=/tmp/engine-name"
-						],
-						"resources": {}
-					}
-				},
-				{
-					"name": "cleanup-chaos-resources",
-					"inputs": {},
-					"outputs": {},
-					"metadata": {},
-					"container": {
-						"name": "",
-						"image": "litmuschaos/k8s:2.11.0",
-						"command": [
-							"sh",
-							"-c"
-						],
-						"args": [
-							"kubectl delete chaosengine -l workflow_run_id={{ .WorkflowUID }} -n {{ .WorkflowAdminNamespace }}"
-						],
-						"resources": {}
-					}
-				}
-			]
+			},
 		},
-		"status": {}
-	}`,
-		// Add more experiment types as needed
+		"status": map[string]interface{}{},
 	}
-	
-	// Get the template for the specified experiment type
-	tmpl, ok := templates[experimentType]
-	if !ok {
-		return "", fmt.Errorf("no template found for experiment type: %s", experimentType)
+
+	// Add experiment-specific templates
+	templates, err := getExperimentTemplates(experimentType, config)
+	if err != nil {
+		return "", err
 	}
+
+	// Append templates to the base manifest
+	baseManifest["spec"].(map[string]interface{})["templates"] = append(
+		baseManifest["spec"].(map[string]interface{})["templates"].([]map[string]interface{}),
+		templates...,
+	)
+
+	// Convert to JSON and then to pretty-printed string
+	jsonBytes, err := json.MarshalIndent(baseManifest, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal workflow manifest: %v", err)
+	}
+
+	// Replace template variables with their actual values using more specific placeholders
+	manifestStr := string(jsonBytes)
 	
-	return tmpl, nil
+	// Replace with more specific placeholders to avoid unintentional replacements
+	manifestStr = strings.ReplaceAll(manifestStr, "__EXPERIMENT_NAME__", experimentName)
+	manifestStr = strings.ReplaceAll(manifestStr, "__EXPERIMENT_TYPE__", string(experimentType))
+	manifestStr = strings.ReplaceAll(manifestStr, "__APP_NAMESPACE__", config.AppNamespace)
+	manifestStr = strings.ReplaceAll(manifestStr, "__APP_LABEL__", config.AppLabel)
+	manifestStr = strings.ReplaceAll(manifestStr, "__APP_KIND__", config.AppKind)
+	manifestStr = strings.ReplaceAll(manifestStr, "__CHAOS_DURATION_VALUE__", config.ChaosDuration)
+	manifestStr = strings.ReplaceAll(manifestStr, "__CHAOS_INTERVAL_VALUE__", config.ChaosInterval)
+	manifestStr = strings.ReplaceAll(manifestStr, "__TARGET_CONTAINER_VALUE__", config.TargetContainer)
+	manifestStr = strings.ReplaceAll(manifestStr, "__PODS_AFFECTED_PERC_VALUE__", config.PodsAffectedPerc)
+	manifestStr = strings.ReplaceAll(manifestStr, "__RAMP_TIME_VALUE__", config.RampTime)
+
+	// Replace experiment-specific variables
+	switch experimentType {
+	case PodCPUHog:
+		manifestStr = strings.ReplaceAll(manifestStr, "__CPU_CORES_VALUE__", config.CPUCores)
+	case PodMemoryHog:
+		manifestStr = strings.ReplaceAll(manifestStr, "__MEMORY_CONSUMPTION_VALUE__", config.MemoryConsumption)
+	}
+
+	return manifestStr, nil
 }
 
-// ConstructPodDeleteExperimentRequest is a helper function specifically for pod-delete experiments
+func getExperimentTemplates(experimentType ExperimentType, config ExperimentConfig) ([]map[string]interface{}, error) {
+    var templates []map[string]interface{}
+
+    // Artifact name and path matching the working YAML
+    installTemplate := map[string]interface{}{
+        "name": "install-chaos-faults",
+        "inputs": map[string]interface{}{
+            "artifacts": []map[string]interface{}{
+                {
+                    "name": string(experimentType) + "-ce5",
+                    "path": "/tmp/" + string(experimentType) + "-ce5.yaml",
+                    "raw": map[string]interface{}{
+                        "data": getChaosExperimentData(experimentType),
+                    },
+                },
+            },
+        },
+        "container": map[string]interface{}{
+            "name":    "",
+            "image":   "litmuschaos/k8s:2.11.0",
+            "command": []string{"sh", "-c"},
+            "args": []string{
+                "kubectl apply -f /tmp/ -n {{workflow.parameters.adminModeNamespace}} && sleep 30",
+            },
+            "resources": map[string]interface{}{},
+        },
+    }
+
+    runTemplate := map[string]interface{}{
+        "name": string(experimentType) + "-ce5",
+        "inputs": map[string]interface{}{
+            "artifacts": []map[string]interface{}{
+                {
+                    "name": string(experimentType) + "-ce5",
+                    "path": "/tmp/" + string(experimentType) + "-ce5.yaml",
+                    "raw": map[string]interface{}{
+                        "data": getChaosEngineData(experimentType),
+                    },
+                },
+            },
+        },
+        "outputs": map[string]interface{}{},
+        "metadata": map[string]interface{}{
+            "labels": map[string]string{
+                "weight": "10",
+            },
+        },
+        "container": map[string]interface{}{
+            "name":  "",
+            "image": "docker.io/litmuschaos/litmus-checker:2.11.0",
+            "args": []string{
+                "-file=/tmp/" + string(experimentType) + "-ce5.yaml",
+                "-saveName=/tmp/engine-name",
+            },
+            "resources": map[string]interface{}{},
+        },
+    }
+
+	cleanupTemplate := map[string]interface{}{
+		"name":    "cleanup-chaos-resources",
+		"inputs":  map[string]interface{}{},
+		"outputs": map[string]interface{}{},
+		"metadata": map[string]interface{}{},
+		"container": map[string]interface{}{
+			"name":    "",
+			"image":   "litmuschaos/k8s:2.11.0",
+			"command": []string{"sh", "-c"},
+			"args": []string{
+				"kubectl delete chaosengine -l workflow_run_id={{ workflow.uid }} -n {{workflow.parameters.adminModeNamespace}}",
+			},
+			"resources": map[string]interface{}{},
+		},
+	}
+
+	templates = append(templates, installTemplate, runTemplate, cleanupTemplate)
+	return templates, nil
+}
+
+// getChaosExperimentData returns the ChaosExperiment definition for the specified experiment type
+func getChaosExperimentData(experimentType ExperimentType) string {
+	switch experimentType {
+	case PodDelete:
+		return `apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Deletes a pod belonging to a deployment/statefulset/daemonset
+kind: ChaosExperiment
+metadata:
+  name: __EXPERIMENT_TYPE__
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups:
+          - ""
+        resources:
+          - pods
+        verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - deletecollection
+      - apiGroups:
+          - ""
+        resources:
+          - events
+        verbs:
+          - create
+          - get
+          - list
+          - patch
+          - update
+      - apiGroups:
+          - ""
+        resources:
+          - configmaps
+        verbs:
+          - get
+          - list
+      - apiGroups:
+          - ""
+        resources:
+          - pods/log
+        verbs:
+          - get
+          - list
+          - watch
+      - apiGroups:
+          - ""
+        resources:
+          - pods/exec
+        verbs:
+          - get
+          - list
+          - create
+      - apiGroups:
+          - apps
+        resources:
+          - deployments
+          - statefulsets
+          - replicasets
+          - daemonsets
+        verbs:
+          - list
+          - get
+      - apiGroups:
+          - apps.openshift.io
+        resources:
+          - deploymentconfigs
+        verbs:
+          - list
+          - get
+      - apiGroups:
+          - ""
+        resources:
+          - replicationcontrollers
+        verbs:
+          - get
+          - list
+      - apiGroups:
+          - argoproj.io
+        resources:
+          - rollouts
+        verbs:
+          - list
+          - get
+      - apiGroups:
+          - batch
+        resources:
+          - jobs
+        verbs:
+          - create
+          - list
+          - get
+          - delete
+          - deletecollection
+      - apiGroups:
+          - litmuschaos.io
+        resources:
+          - chaosengines
+          - chaosexperiments
+          - chaosresults
+        verbs:
+          - create
+          - list
+          - get
+          - patch
+          - update
+          - delete
+    image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0"
+    imagePullPolicy: Always
+    args:
+    - -c
+    - ./experiments -name pod-delete
+    command:
+    - /bin/bash
+    env:
+    - name: TOTAL_CHAOS_DURATION
+      value: '__CHAOS_DURATION_VALUE__'
+    - name: RAMP_TIME
+      value: '__RAMP_TIME_VALUE__'
+    - name: KILL_COUNT
+      value: ''
+    - name: FORCE
+      value: 'true'
+    - name: CHAOS_INTERVAL
+      value: '__CHAOS_INTERVAL_VALUE__'
+    labels:
+      name: __EXPERIMENT_TYPE__`
+	case PodCPUHog:
+		return `apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Injects cpu consumption on pods belonging to an app deployment
+kind: ChaosExperiment
+metadata:
+  name: __EXPERIMENT_TYPE__
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups:
+          - ""
+          - "batch"
+          - "litmuschaos.io"
+        resources:
+          - "jobs"
+          - "pods"
+          - "pods/log"
+          - "events"
+          - "chaosengines"
+          - "chaosexperiments"
+          - "chaosresults"
+        verbs:
+          - "create"
+          - "list"
+          - "get"
+          - "patch"
+          - "update"
+          - "delete"
+    image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0"
+    args:
+    - -c
+    - ./experiments -name __EXPERIMENT_TYPE__
+    command:
+    - /bin/bash
+    env:
+    - name: TOTAL_CHAOS_DURATION
+      value: '__CHAOS_DURATION_VALUE__'
+    - name: CHAOS_INTERVAL
+      value: '__CHAOS_INTERVAL_VALUE__'
+    - name: CPU_CORES
+      value: '__CPU_CORES_VALUE__'
+    - name: PODS_AFFECTED_PERC
+      value: '__PODS_AFFECTED_PERC_VALUE__'
+    - name: RAMP_TIME
+      value: '__RAMP_TIME_VALUE__'
+    labels:
+      name: __EXPERIMENT_TYPE__`
+
+	case PodMemoryHog:
+		return `apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Injects memory consumption on pods belonging to an app deployment
+kind: ChaosExperiment
+metadata:
+  name: __EXPERIMENT_TYPE__
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups:
+          - ""
+          - "batch"
+          - "litmuschaos.io"
+        resources:
+          - "jobs"
+          - "pods"
+          - "pods/log"
+          - "events"
+          - "chaosengines"
+          - "chaosexperiments"
+          - "chaosresults"
+        verbs:
+          - "create"
+          - "list"
+          - "get"
+          - "patch"
+          - "update"
+          - "delete"
+    image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0"
+    args:
+    - -c
+    - ./experiments -name __EXPERIMENT_TYPE__
+    command:
+    - /bin/bash
+    env:
+    - name: TOTAL_CHAOS_DURATION
+      value: '__CHAOS_DURATION_VALUE__'
+    - name: CHAOS_INTERVAL
+      value: '__CHAOS_INTERVAL_VALUE__'
+    - name: MEMORY_CONSUMPTION
+      value: '__MEMORY_CONSUMPTION_VALUE__'
+    - name: PODS_AFFECTED_PERC
+      value: '__PODS_AFFECTED_PERC_VALUE__'
+    - name: RAMP_TIME
+      value: '__RAMP_TIME_VALUE__'
+    labels:
+      name: __EXPERIMENT_TYPE__`
+
+	default:
+		return ""
+	}
+}
+
+// getChaosEngineData returns the ChaosEngine definition for the specified experiment type
+func getChaosEngineData(experimentType ExperimentType) string {
+	switch experimentType {
+	case PodDelete:
+		return `apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  namespace: "{{workflow.parameters.adminModeNamespace}}"
+  labels:
+    workflow_run_id: "{{ workflow.uid }}"
+    workflow_name: __EXPERIMENT_NAME__
+  annotations:
+    probeRef: '[{"name":"myprobe","mode":"SOT"}]'
+  generateName: __EXPERIMENT_TYPE__-ce5
+spec:
+  appinfo:
+    appns: __APP_NAMESPACE__
+    applabel: __APP_LABEL__
+    appkind: __APP_KIND__
+  engineState: active
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: __EXPERIMENT_TYPE__
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "__CHAOS_DURATION_VALUE__"
+            - name: RAMP_TIME
+              value: "__RAMP_TIME_VALUE__"
+            - name: FORCE
+              value: "true"
+            - name: CHAOS_INTERVAL
+              value: "__CHAOS_INTERVAL_VALUE__"
+            - name: PODS_AFFECTED_PERC
+              value: "__PODS_AFFECTED_PERC_VALUE__"
+            - name: TARGET_CONTAINER
+              value: "__TARGET_CONTAINER_VALUE__"`
+
+	case PodCPUHog:
+		return `apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  namespace: "{{workflow.parameters.adminModeNamespace}}"
+  labels:
+    workflow_run_id: "{{ workflow.uid }}"
+    workflow_name: __EXPERIMENT_NAME__
+  annotations:
+    probeRef: '[{"name":"myprobe","mode":"SOT"}]'
+  generateName: __EXPERIMENT_TYPE__-ce5
+spec:
+  appinfo:
+    appns: __APP_NAMESPACE__
+    applabel: __APP_LABEL__
+    appkind: __APP_KIND__
+  engineState: active
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: __EXPERIMENT_TYPE__
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "__CHAOS_DURATION_VALUE__"
+            - name: CPU_CORES
+              value: "__CPU_CORES_VALUE__"
+            - name: TARGET_CONTAINER
+              value: "__TARGET_CONTAINER_VALUE__"
+            - name: PODS_AFFECTED_PERC
+              value: "__PODS_AFFECTED_PERC_VALUE__"
+            - name: RAMP_TIME
+              value: "__RAMP_TIME_VALUE__"`
+
+	case PodMemoryHog:
+		return `apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  namespace: "{{workflow.parameters.adminModeNamespace}}"
+  labels:
+    workflow_run_id: "{{ workflow.uid }}"
+    workflow_name: __EXPERIMENT_NAME__
+  annotations:
+    probeRef: '[{"name":"myprobe","mode":"SOT"}]'
+  generateName: __EXPERIMENT_TYPE__-ce5
+spec:
+  appinfo:
+    appns: __APP_NAMESPACE__
+    applabel: __APP_LABEL__
+    appkind: __APP_KIND__
+  engineState: active
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: __EXPERIMENT_TYPE__
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "__CHAOS_DURATION_VALUE__"
+            - name: MEMORY_CONSUMPTION
+              value: "__MEMORY_CONSUMPTION_VALUE__"
+            - name: TARGET_CONTAINER
+              value: "__TARGET_CONTAINER_VALUE__"
+            - name: PODS_AFFECTED_PERC
+              value: "__PODS_AFFECTED_PERC_VALUE__"
+            - name: RAMP_TIME
+              value: "__RAMP_TIME_VALUE__"`
+
+	default:
+		return ""
+	}
+}
+
+// Helper functions for specific experiment types
 func ConstructPodDeleteExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
-	config := GetDefaultExperimentConfig("pod-delete")
-	return ConstructExperimentRequest(details, experimentID, experimentName, "pod-delete", config)
-} 
+	config := GetDefaultExperimentConfig(PodDelete)
+	return ConstructExperimentRequest(details, experimentID, experimentName, PodDelete, config)
+}
+
+func ConstructPodCPUHogExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
+	config := GetDefaultExperimentConfig(PodCPUHog)
+	return ConstructExperimentRequest(details, experimentID, experimentName, PodCPUHog, config)
+}
+
+func ConstructPodMemoryHogExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
+	config := GetDefaultExperimentConfig(PodMemoryHog)
+	return ConstructExperimentRequest(details, experimentID, experimentName, PodMemoryHog, config)
+}
