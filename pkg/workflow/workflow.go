@@ -3,6 +3,8 @@ package workflow
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/litmuschaos/chaos-ci-lib/pkg/types"
@@ -39,6 +41,11 @@ type ExperimentConfig struct {
 	
 	// Memory hog specific parameters
 	MemoryConsumption string
+
+	// Probe configuration
+	UseExistingProbe  bool
+	ProbeName         string
+	ProbeMode         string
 }
 
 // GetDefaultExperimentConfig returns default configuration for a given experiment type
@@ -50,6 +57,9 @@ func GetDefaultExperimentConfig(experimentType ExperimentType) ExperimentConfig 
 		PodsAffectedPerc: "",
 		RampTime:         "",
 		TargetContainer:  "",
+		UseExistingProbe: true,  // Always use a probe by default
+		ProbeName:        "myprobe",
+		ProbeMode:        "SOT",
 	}
 	
 	// Apply experiment-specific defaults
@@ -178,10 +188,10 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 		return "", fmt.Errorf("failed to marshal workflow manifest: %v", err)
 	}
 
-	// Replace template variables with their actual values using more specific placeholders
+	// Convert JSON to string
 	manifestStr := string(jsonBytes)
 	
-	// Replace with more specific placeholders to avoid unintentional replacements
+	// Replace with specific placeholders
 	manifestStr = strings.ReplaceAll(manifestStr, "__EXPERIMENT_NAME__", experimentName)
 	manifestStr = strings.ReplaceAll(manifestStr, "__EXPERIMENT_TYPE__", string(experimentType))
 	manifestStr = strings.ReplaceAll(manifestStr, "__APP_NAMESPACE__", config.AppNamespace)
@@ -200,7 +210,7 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 	case PodMemoryHog:
 		manifestStr = strings.ReplaceAll(manifestStr, "__MEMORY_CONSUMPTION_VALUE__", config.MemoryConsumption)
 	}
-
+	
 	return manifestStr, nil
 }
 
@@ -232,6 +242,20 @@ func getExperimentTemplates(experimentType ExperimentType, config ExperimentConf
         },
     }
 
+    // Create the raw data string for the chaos engine
+    engineData := getChaosEngineData(experimentType)
+    
+    // Create a raw string version of the probe annotation to directly insert into the YAML
+    probeAnnotation := fmt.Sprintf("probeRef: '[{\"name\":\"%s\",\"mode\":\"%s\"}]'", 
+        config.ProbeName, config.ProbeMode)
+    
+    // Add the annotation directly into the YAML string
+    engineData = strings.Replace(
+        engineData,
+        "metadata:",
+        "metadata:\n  annotations:\n    " + probeAnnotation,
+        1)
+
     runTemplate := map[string]interface{}{
         "name": string(experimentType) + "-ce5",
         "inputs": map[string]interface{}{
@@ -240,7 +264,7 @@ func getExperimentTemplates(experimentType ExperimentType, config ExperimentConf
                     "name": string(experimentType) + "-ce5",
                     "path": "/tmp/" + string(experimentType) + "-ce5.yaml",
                     "raw": map[string]interface{}{
-                        "data": getChaosEngineData(experimentType),
+                        "data": engineData,
                     },
                 },
             },
@@ -525,17 +549,15 @@ spec:
 
 // getChaosEngineData returns the ChaosEngine definition for the specified experiment type
 func getChaosEngineData(experimentType ExperimentType) string {
-	switch experimentType {
-	case PodDelete:
-		return `apiVersion: litmuschaos.io/v1alpha1
+    switch experimentType {
+    case PodDelete:
+        return `apiVersion: litmuschaos.io/v1alpha1
 kind: ChaosEngine
 metadata:
   namespace: "{{workflow.parameters.adminModeNamespace}}"
   labels:
     workflow_run_id: "{{ workflow.uid }}"
     workflow_name: __EXPERIMENT_NAME__
-  annotations:
-    probeRef: '[{"name":"myprobe","mode":"SOT"}]'
   generateName: __EXPERIMENT_TYPE__-ce5
 spec:
   appinfo:
@@ -562,16 +584,14 @@ spec:
             - name: TARGET_CONTAINER
               value: "__TARGET_CONTAINER_VALUE__"`
 
-	case PodCPUHog:
-		return `apiVersion: litmuschaos.io/v1alpha1
+    case PodCPUHog:
+        return `apiVersion: litmuschaos.io/v1alpha1
 kind: ChaosEngine
 metadata:
   namespace: "{{workflow.parameters.adminModeNamespace}}"
   labels:
     workflow_run_id: "{{ workflow.uid }}"
     workflow_name: __EXPERIMENT_NAME__
-  annotations:
-    probeRef: '[{"name":"myprobe","mode":"SOT"}]'
   generateName: __EXPERIMENT_TYPE__-ce5
 spec:
   appinfo:
@@ -596,16 +616,14 @@ spec:
             - name: RAMP_TIME
               value: "__RAMP_TIME_VALUE__"`
 
-	case PodMemoryHog:
-		return `apiVersion: litmuschaos.io/v1alpha1
+    case PodMemoryHog:
+        return `apiVersion: litmuschaos.io/v1alpha1
 kind: ChaosEngine
 metadata:
   namespace: "{{workflow.parameters.adminModeNamespace}}"
   labels:
     workflow_run_id: "{{ workflow.uid }}"
     workflow_name: __EXPERIMENT_NAME__
-  annotations:
-    probeRef: '[{"name":"myprobe","mode":"SOT"}]'
   generateName: __EXPERIMENT_TYPE__-ce5
 spec:
   appinfo:
@@ -630,23 +648,108 @@ spec:
             - name: RAMP_TIME
               value: "__RAMP_TIME_VALUE__"`
 
-	default:
-		return ""
-	}
+    default:
+        return ""
+    }
 }
 
 // Helper functions for specific experiment types
 func ConstructPodDeleteExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
 	config := GetDefaultExperimentConfig(PodDelete)
+	
+	// Apply probe configuration from environment variables if set
+	applyProbeConfigFromEnv(&config)
+	
 	return ConstructExperimentRequest(details, experimentID, experimentName, PodDelete, config)
 }
 
 func ConstructPodCPUHogExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
 	config := GetDefaultExperimentConfig(PodCPUHog)
+	
+	// Apply probe configuration from environment variables if set
+	applyProbeConfigFromEnv(&config)
+	
 	return ConstructExperimentRequest(details, experimentID, experimentName, PodCPUHog, config)
 }
 
 func ConstructPodMemoryHogExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
 	config := GetDefaultExperimentConfig(PodMemoryHog)
+	
+	// Apply probe configuration from environment variables if set
+	applyProbeConfigFromEnv(&config)
+	
+	return ConstructExperimentRequest(details, experimentID, experimentName, PodMemoryHog, config)
+}
+
+// applyProbeConfigFromEnv reads probe configuration from environment variables and applies them to the config
+func applyProbeConfigFromEnv(config *ExperimentConfig) {
+	// Check if probe configuration is specified in environment variables
+	useExistingProbeStr := os.Getenv("LITMUS_USE_EXISTING_PROBE")
+	if useExistingProbeStr != "" {
+		useExistingProbe, err := strconv.ParseBool(useExistingProbeStr)
+		if err == nil {
+			config.UseExistingProbe = useExistingProbe
+			
+			// Get probe name and mode regardless of useExistingProbe value
+			probeName := os.Getenv("LITMUS_PROBE_NAME")
+			if probeName != "" {
+				config.ProbeName = probeName
+			}
+			
+			probeMode := os.Getenv("LITMUS_PROBE_MODE")
+			if probeMode != "" {
+				config.ProbeMode = probeMode
+			}
+			
+			if !useExistingProbe {
+				fmt.Println("Warning: Creating custom probes is not supported at this time. Using the specified probe details as fallback.")
+			} else {
+				fmt.Printf("Using probe: %s with mode: %s\n", config.ProbeName, config.ProbeMode)
+			}
+		} else {
+			fmt.Printf("Warning: Failed to parse LITMUS_USE_EXISTING_PROBE environment variable: %v\n", err)
+		}
+	} else {
+		fmt.Printf("No probe configuration provided. Using default probe: %s with mode: %s\n", config.ProbeName, config.ProbeMode)
+	}
+}
+
+// Helper functions for specific experiment types with probe configuration
+func ConstructPodDeleteExperimentRequestWithProbe(details *types.ExperimentDetails, experimentID string, experimentName string, useExistingProbe bool, probeName, probeMode string) (*models.SaveChaosExperimentRequest, error) {
+	config := GetDefaultExperimentConfig(PodDelete)
+	
+	// Apply probe configuration
+	config.UseExistingProbe = useExistingProbe
+	if useExistingProbe {
+		config.ProbeName = probeName
+		config.ProbeMode = probeMode
+	}
+	
+	return ConstructExperimentRequest(details, experimentID, experimentName, PodDelete, config)
+}
+
+func ConstructPodCPUHogExperimentRequestWithProbe(details *types.ExperimentDetails, experimentID string, experimentName string, useExistingProbe bool, probeName, probeMode string) (*models.SaveChaosExperimentRequest, error) {
+	config := GetDefaultExperimentConfig(PodCPUHog)
+	
+	// Apply probe configuration
+	config.UseExistingProbe = useExistingProbe
+	if useExistingProbe {
+		config.ProbeName = probeName
+		config.ProbeMode = probeMode
+	}
+	
+	return ConstructExperimentRequest(details, experimentID, experimentName, PodCPUHog, config)
+}
+
+func ConstructPodMemoryHogExperimentRequestWithProbe(details *types.ExperimentDetails, experimentID string, experimentName string, useExistingProbe bool, probeName, probeMode string) (*models.SaveChaosExperimentRequest, error) {
+	config := GetDefaultExperimentConfig(PodMemoryHog)
+	
+	// Apply probe configuration
+	config.UseExistingProbe = useExistingProbe
+	if useExistingProbe {
+		config.ProbeName = probeName
+		config.ProbeMode = probeMode
+	}
+	
 	return ConstructExperimentRequest(details, experimentID, experimentName, PodMemoryHog, config)
 }
