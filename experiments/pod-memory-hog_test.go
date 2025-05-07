@@ -2,7 +2,7 @@ package experiments
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -185,7 +185,7 @@ func ConstructPodMemoryHogExperimentRequest(details *types.ExperimentDetails, ex
 	defer res.Body.Close()
 
 	// Read template content
-	fileInput, err := ioutil.ReadAll(res.Body)
+	fileInput, err := io.ReadAll(res.Body)
 	if err != nil {
 		klog.Errorf("Failed to read data from response: %v", err)
 		return nil, fmt.Errorf("failed to read template data: %w", err)

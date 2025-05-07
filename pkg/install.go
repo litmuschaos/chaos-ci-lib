@@ -1,6 +1,8 @@
 package pkg
 
 import (
+	"io"
+
 	yamlChe "github.com/ghodss/yaml"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/environment"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/log"
@@ -12,7 +14,6 @@ import (
 
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 
@@ -133,7 +134,7 @@ func InstallChaosEngine(experimentsDetails *types.ExperimentDetails, chaosEngine
 	}
 
 	// ReadAll reads from response until an error or EOF and returns the data it read.
-	fileInput, err := ioutil.ReadAll(res.Body)
+	fileInput, err := io.ReadAll(res.Body)
 	if err != nil {
 		log.Errorf("Fail to read data from response: %v", err)
 	}
