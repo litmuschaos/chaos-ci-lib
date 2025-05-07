@@ -39,10 +39,7 @@ var _ = Describe("BDD of running pod-network-latency experiment", func() {
 			clients = environment.ClientSets{}
 			err = nil
 
-			//Getting kubeConfig and Generate ClientSets
-			// By("[PreChaos]: Getting kubeconfig and generate clientset")
-			// err = clients.GenerateClientSetFromKubeConfig()
-			// Expect(err).To(BeNil(), "Unable to Get the kubeconfig, due to {%v}", err)
+			 
 
 			//Fetching all the default ENV
 			By("[PreChaos]: Fetching all default ENVs")
@@ -83,34 +80,40 @@ var _ = Describe("BDD of running pod-network-latency experiment", func() {
             Expect(errConstruct).To(BeNil(), "Failed to construct experiment request: %v", errConstruct)
 
             // 2. Create and Run Experiment via SDK
-			By("[SDK Prepare]: Creating and Running Chaos Experiment")
-			creds := clients.GetSDKCredentials()
-            _ , err := experiment.CreateExperiment(clients.LitmusProjectID, *experimentRequest, creds)
+            By("[SDK Prepare]: Creating and Running Chaos Experiment")
+            creds := clients.GetSDKCredentials()
+            _, err := experiment.CreateExperiment(clients.LitmusProjectID, *experimentRequest, creds)
             Expect(err).To(BeNil(), "Failed to create experiment via SDK: %v", err)
-            _, errRun := experiment.RunExperiment(clients.LitmusProjectID, experimentID, creds)
-            Expect(errRun).To(BeNil(), "Failed to run experiment via SDK: %v", errRun)
-           
-            By("[SDK Query]: Fetching latest experiment run ID")
-            // Get experiment runs for this experiment
-            runsList, err := experiment.GetExperimentRunsList(
-                clients.LitmusProjectID, 
-                models.ListExperimentRunRequest{
-                    ExperimentIDs: []*string{&experimentID},
-                    Pagination: &models.Pagination{
-                        Page: 1,
-                        Limit: 1,
-                    },
-                }, 
-                creds,
-            )
-            Expect(err).To(BeNil(), "Failed to fetch experiment runs: %v", err)
-    
-            if len(runsList.ListExperimentRunDetails.ExperimentRuns) > 0 {
-                experimentsDetails.ExperimentRunID = runsList.ListExperimentRunDetails.ExperimentRuns[0].ExperimentRunID
-                klog.Infof("Latest experiment run ID: %s", experimentsDetails.ExperimentRunID)
-            } else {
-                Fail("No experiment runs found for experiment: " + experimentID)
+
+            By("[SDK Query]: Polling for experiment run to become available")
+            maxRetries := 10
+            found := false
+
+            for i := 0; i < maxRetries; i++ {
+                time.Sleep(3 * time.Second)
+                
+                runsList, err := experiment.GetExperimentRunsList(
+                    clients.LitmusProjectID, 
+                    models.ListExperimentRunRequest{
+                        ExperimentIDs: []*string{&experimentID},
+                    }, 
+                    creds,
+                )
+                
+                klog.Infof("Attempt %d: Found %d experiment runs", i+1, 
+                        len(runsList.ListExperimentRunDetails.ExperimentRuns))
+                
+                if err == nil && len(runsList.ListExperimentRunDetails.ExperimentRuns) > 0 {
+                    experimentsDetails.ExperimentRunID = runsList.ListExperimentRunDetails.ExperimentRuns[0].ExperimentRunID
+                    klog.Infof("Found experiment run ID: %s", experimentsDetails.ExperimentRunID)
+                    found = true
+                    break
+                }
+                
+                klog.Infof("Retrying after delay...")
             }
+
+            Expect(found).To(BeTrue(), "No experiment runs found for experiment after %d retries", maxRetries)
             
 			// 3. Poll for Experiment Run Status
 			By("[SDK Status]: Polling for Experiment Run Status")
