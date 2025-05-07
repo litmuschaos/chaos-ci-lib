@@ -7,12 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/litmuschaos/chaos-ci-lib/pkg"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/environment"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/infrastructure"
-	"github.com/litmuschaos/chaos-ci-lib/pkg/log"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/types"
+	"github.com/litmuschaos/chaos-ci-lib/pkg/workflow"
 	experiment "github.com/litmuschaos/litmus-go-sdk/pkg/apis/experiment"
 	models "github.com/litmuschaos/litmus/chaoscenter/graphql/server/graph/model"
 	. "github.com/onsi/ginkgo"
@@ -44,13 +43,13 @@ var _ = Describe("BDD of running disk-fill experiment", func() {
 			err = nil
 
 			//Getting kubeConfig and Generate ClientSets
-			By("[PreChaos]: Getting kubeconfig and generate clientset")
-			err = clients.GenerateClientSetFromKubeConfig()
-			Expect(err).To(BeNil(), "Unable to Get the kubeconfig, due to {%v}", err)
+			// By("[PreChaos]: Getting kubeconfig and generate clientset")
+			// err = clients.GenerateClientSetFromKubeConfig()
+			// Expect(err).To(BeNil(), "Unable to Get the kubeconfig, due to {%v}", err)
 
 			//Fetching all the default ENV
 			By("[PreChaos]: Fetching all default ENVs")
-			log.Infof("[PreReq]: Getting the ENVs for the %v experiment", experimentsDetails.ExperimentName)
+			klog.Infof("[PreReq]: Getting the ENVs for the %v experiment", experimentsDetails.ExperimentName)
 			environment.GetENV(&experimentsDetails, "disk-fill", "disk-fill-engine")
 
 			// Initialize SDK client
@@ -61,36 +60,61 @@ var _ = Describe("BDD of running disk-fill experiment", func() {
 			// Setup infrastructure using the new module
 			By("[PreChaos]: Setting up infrastructure")
 			err = infrastructure.SetupInfrastructure(&experimentsDetails, &clients)
+			if experimentsDetails.ConnectedInfraID == "" && experimentsDetails.UseExistingInfra && experimentsDetails.ExistingInfraID != "" {
+				experimentsDetails.ConnectedInfraID = experimentsDetails.ExistingInfraID
+				klog.Infof("Manually set ConnectedInfraID to %s from ExistingInfraID", experimentsDetails.ConnectedInfraID)
+			}
 			Expect(err).To(BeNil(), "Failed to setup infrastructure, due to {%v}", err)
-
+			
 			// Validate that infrastructure ID is properly set
 			Expect(experimentsDetails.ConnectedInfraID).NotTo(BeEmpty(), "Setup failed: ConnectedInfraID is empty after connection attempt.")
 		})
 
-		It("Should run the disk-fill experiment via SDK", func() {
+		It("Should run the disk fill experiment via SDK", func() {
 
 			// Ensure pre-checks passed from BeforeEach
 			Expect(err).To(BeNil(), "Error during BeforeEach setup: %v", err)
-
-			// V3 SDK PATH (Now the only path)
 			klog.Info("Executing V3 SDK Path for Experiment")
 
-			// 1. Construct Experiment Request
-			By("[SDK Prepare]: Constructing Chaos Experiment Request")
-			experimentName := experimentsDetails.EngineName
-			experimentID := experimentName + "-" + uuid.New().String()[:8]
-			experimentRequest, errConstruct := ConstructDiskFillExperimentRequest(&experimentsDetails, experimentID)
-			Expect(errConstruct).To(BeNil(), "Failed to construct experiment request: %v", errConstruct)
 
-			// 2. Create and Run Experiment via SDK
+            // 1. Construct Experiment Request
+            By("[SDK Prepare]: Constructing Chaos Experiment Request")
+            experimentName := pkg.GenerateUniqueExperimentName("disk-fill")
+            experimentsDetails.ExperimentName = experimentName
+            experimentID := pkg.GenerateExperimentID()
+            experimentRequest, errConstruct := workflow.ConstructDiskFillExperimentRequest(&experimentsDetails, experimentID, experimentName)
+            Expect(errConstruct).To(BeNil(), "Failed to construct experiment request: %v", errConstruct)
+
+            // 2. Create and Run Experiment via SDK
 			By("[SDK Prepare]: Creating and Running Chaos Experiment")
 			creds := clients.GetSDKCredentials()
-			runResponse, errRun := experiment.CreateExperiment(clients.LitmusProjectID, *experimentRequest, creds)
-			Expect(errRun).To(BeNil(), "Failed to create/run experiment via SDK: %v", errRun)
-			Expect(runResponse.Data.RunExperimentDetails.NotifyID).NotTo(BeEmpty(), "Experiment Run ID (NotifyID) should not be empty")
-			experimentsDetails.ExperimentRunID = runResponse.Data.RunExperimentDetails.NotifyID
-			klog.Infof("Experiment Run successfully triggered via SDK. Run ID: %s", experimentsDetails.ExperimentRunID)
-
+            _ , err := experiment.CreateExperiment(clients.LitmusProjectID, *experimentRequest, creds)
+            Expect(err).To(BeNil(), "Failed to create experiment via SDK: %v", err)
+            _, errRun := experiment.RunExperiment(clients.LitmusProjectID, experimentID, creds)
+            Expect(errRun).To(BeNil(), "Failed to run experiment via SDK: %v", errRun)
+           
+            By("[SDK Query]: Fetching latest experiment run ID")
+            // Get experiment runs for this experiment
+            runsList, err := experiment.GetExperimentRunsList(
+                clients.LitmusProjectID, 
+                models.ListExperimentRunRequest{
+                    ExperimentIDs: []*string{&experimentID},
+                    Pagination: &models.Pagination{
+                        Page: 1,
+                        Limit: 1,
+                    },
+                }, 
+                creds,
+            )
+            Expect(err).To(BeNil(), "Failed to fetch experiment runs: %v", err)
+    
+            if len(runsList.ListExperimentRunDetails.ExperimentRuns) > 0 {
+                experimentsDetails.ExperimentRunID = runsList.ListExperimentRunDetails.ExperimentRuns[0].ExperimentRunID
+                klog.Infof("Latest experiment run ID: %s", experimentsDetails.ExperimentRunID)
+            } else {
+                Fail("No experiment runs found for experiment: " + experimentID)
+            }
+            
 			// 3. Poll for Experiment Run Status
 			By("[SDK Status]: Polling for Experiment Run Status")
 			var finalPhase string
@@ -112,11 +136,11 @@ var _ = Describe("BDD of running disk-fill experiment", func() {
 						klog.Errorf("Error fetching experiment run status for %s: %v", experimentsDetails.ExperimentRunID, errStatus)
 						continue
 					}
-					currentPhase := runStatus.Data.ExperimentRun.Phase
+					currentPhase := runStatus.ExperimentRun.Phase
 					klog.Infof("Experiment Run %s current phase: %s", experimentsDetails.ExperimentRunID, currentPhase)
 					finalPhases := []string{"Completed", "Completed_With_Error", "Failed", "Error", "Stopped", "Skipped", "Aborted", "Timeout", "Terminated"}
-					if pkg.ContainsString(finalPhases, currentPhase) {
-						finalPhase = currentPhase
+					if pkg.ContainsString(finalPhases, string(currentPhase)) {
+						finalPhase = string(currentPhase)
 						klog.Infof("Experiment Run %s reached final phase: %s", experimentsDetails.ExperimentRunID, currentPhase)
 						break pollLoop
 					}

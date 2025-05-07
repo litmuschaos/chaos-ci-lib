@@ -26,6 +26,15 @@ const (
 	PodNetworkLatency      ExperimentType = "pod-network-latency"
 	PodNetworkLoss         ExperimentType = "pod-network-loss"
 	PodNetworkDuplication  ExperimentType = "pod-network-duplication"
+	
+	// Autoscaling
+	PodAutoscaler  ExperimentType = "pod-autoscaler"
+	
+	// Container chaos
+	ContainerKill  ExperimentType = "container-kill"
+	
+	// Disk chaos
+	DiskFill  ExperimentType = "disk-fill"
 )
 
 // ExperimentConfig holds configuration for an experiment
@@ -74,6 +83,17 @@ type ExperimentConfig struct {
 	
 	// Network duplication specific
 	NetworkPacketDuplicationPercentage string
+	
+	// Pod Autoscaler specific
+	ReplicaCount      string
+	
+	// Container kill specific parameters
+	Signal            string
+	
+	// Disk fill specific parameters
+	FillPercentage            string
+	DataBlockSize             string
+	EphemeralStorageMebibytes string
 
 	// Probe configuration
 	UseExistingProbe  bool
@@ -157,6 +177,27 @@ func GetDefaultExperimentConfig(experimentType ExperimentType) ExperimentConfig 
 		config.NetworkPacketDuplicationPercentage = "100"
 		config.Description = "Pod network duplication chaos experiment execution"
 		config.Tags = []string{"pod-network-duplication", "network-chaos", "litmus"}
+		
+	case PodAutoscaler:
+		config.ChaosDuration = "60"
+		config.ReplicaCount = "5"
+		config.Description = "Pod autoscaler chaos experiment execution"
+		config.Tags = []string{"pod-autoscaler", "autoscaling", "litmus"}
+		
+	case ContainerKill:
+		config.ChaosDuration = "20"
+		config.ChaosInterval = "10"
+		config.Signal = "SIGKILL"
+		config.Description = "Container kill chaos experiment execution"
+		config.Tags = []string{"container-kill", "chaos", "litmus"}
+
+	case DiskFill:
+		config.ChaosDuration = "60"
+		config.FillPercentage = "80"
+		config.DataBlockSize = "256"
+		config.EphemeralStorageMebibytes = ""
+		config.Description = "Disk fill chaos experiment execution"
+		config.Tags = []string{"disk-fill", "chaos", "litmus"}
 	}
 	
 	return config
@@ -318,6 +359,14 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 			manifestStr = strings.ReplaceAll(manifestStr, "__CPU_CORES_VALUE__", config.CPUCores)
 		case PodMemoryHog:
 			manifestStr = strings.ReplaceAll(manifestStr, "__MEMORY_CONSUMPTION_VALUE__", config.MemoryConsumption)
+		case PodAutoscaler:
+			manifestStr = strings.ReplaceAll(manifestStr, "__REPLICA_COUNT_VALUE__", config.ReplicaCount)
+		case ContainerKill:
+			manifestStr = strings.ReplaceAll(manifestStr, "__SIGNAL_VALUE__", config.Signal)
+		case DiskFill:
+			manifestStr = strings.ReplaceAll(manifestStr, "__FILL_PERCENTAGE_VALUE__", config.FillPercentage)
+			manifestStr = strings.ReplaceAll(manifestStr, "__DATA_BLOCK_SIZE_VALUE__", config.DataBlockSize)
+			manifestStr = strings.ReplaceAll(manifestStr, "__EPHEMERAL_STORAGE_MEBIBYTES_VALUE__", config.EphemeralStorageMebibytes)
 		}
 	}
 	
@@ -855,6 +904,257 @@ spec:
       value: "__SEQUENCE_VALUE__"
     labels:
       name: pod-network-duplication`
+      
+    case PodAutoscaler:
+        return `apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Scale the application replicas and test the node autoscaling on cluster
+kind: ChaosExperiment
+metadata:
+  name: pod-autoscaler
+  labels:
+    name: pod-autoscaler
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: 3.16.0
+spec:
+  definition:
+    scope: Cluster
+    permissions:
+      - apiGroups:
+          - ""
+        resources:
+          - pods
+        verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - deletecollection
+      - apiGroups:
+          - ""
+        resources:
+          - events
+        verbs:
+          - create
+          - get
+          - list
+          - patch
+          - update
+      - apiGroups:
+          - ""
+        resources:
+          - configmaps
+        verbs:
+          - get
+          - list
+      - apiGroups:
+          - ""
+        resources:
+          - pods/log
+        verbs:
+          - get
+          - list
+          - watch
+      - apiGroups:
+          - ""
+        resources:
+          - pods/exec
+        verbs:
+          - get
+          - list
+          - create
+      - apiGroups:
+          - apps
+        resources:
+          - deployments
+          - statefulsets
+        verbs:
+          - list
+          - get
+          - patch
+          - update
+      - apiGroups:
+          - batch
+        resources:
+          - jobs
+        verbs:
+          - create
+          - list
+          - get
+          - delete
+          - deletecollection
+      - apiGroups:
+          - litmuschaos.io
+        resources:
+          - chaosengines
+          - chaosexperiments
+          - chaosresults
+        verbs:
+          - create
+          - list
+          - get
+          - patch
+          - update
+          - delete
+    image: litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0
+    imagePullPolicy: Always
+    args:
+      - -c
+      - ./experiments -name pod-autoscaler
+    command:
+      - /bin/bash
+    env:
+      - name: TOTAL_CHAOS_DURATION
+        value: "__CHAOS_DURATION_VALUE__"
+      - name: RAMP_TIME
+        value: "__RAMP_TIME_VALUE__"
+      - name: REPLICA_COUNT
+        value: "__REPLICA_COUNT_VALUE__"
+      - name: DEFAULT_HEALTH_CHECK
+        value: "__DEFAULT_HEALTH_CHECK_VALUE__"
+    labels:
+      name: pod-autoscaler
+      app.kubernetes.io/part-of: litmus
+      app.kubernetes.io/component: experiment-job
+      app.kubernetes.io/version: 3.16.0`
+
+	case ContainerKill:
+		return `apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Kills a container belonging to an application pod 
+kind: ChaosExperiment
+metadata:
+  name: container-kill
+  labels:
+    name: container-kill
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: 3.16.0
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups:
+          - ""
+        resources:
+          - pods
+        verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - deletecollection
+    image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0"
+    imagePullPolicy: Always
+    args:
+    - -c
+    - ./experiments -name container-kill
+    command:
+    - /bin/bash
+    env:
+    - name: TARGET_CONTAINER
+      value: '__TARGET_CONTAINER_VALUE__'
+    - name: RAMP_TIME
+      value: '__RAMP_TIME_VALUE__'
+    - name: TARGET_PODS
+      value: '__TARGET_PODS_VALUE__'
+    - name: CHAOS_INTERVAL
+      value: '__CHAOS_INTERVAL_VALUE__'
+    - name: SIGNAL
+      value: '__SIGNAL_VALUE__'
+    - name: SOCKET_PATH
+      value: '/run/containerd/containerd.sock'
+    - name: CONTAINER_RUNTIME
+      value: 'containerd'
+    - name: TOTAL_CHAOS_DURATION
+      value: '__CHAOS_DURATION_VALUE__'
+    - name: PODS_AFFECTED_PERC
+      value: '__PODS_AFFECTED_PERC_VALUE__'
+    - name: NODE_LABEL
+      value: '__NODE_LABEL_VALUE__'
+    - name: DEFAULT_HEALTH_CHECK
+      value: '__DEFAULT_HEALTH_CHECK_VALUE__'
+    - name: LIB_IMAGE
+      value: 'litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0'
+    - name: SEQUENCE
+      value: 'parallel'
+    labels:
+      name: container-kill`
+
+	case DiskFill:
+		return `apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Fillup Ephemeral Storage of a Resource
+kind: ChaosExperiment
+metadata:
+  name: disk-fill
+  labels:
+    name: disk-fill
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: 3.16.0
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups:
+          - ""
+        resources:
+          - pods
+        verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - deletecollection
+    image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0"
+    imagePullPolicy: Always
+    args:
+    - -c
+    - ./experiments -name disk-fill
+    command:
+    - /bin/bash
+    env:
+    - name: TARGET_CONTAINER
+      value: '__TARGET_CONTAINER_VALUE__'
+    - name: FILL_PERCENTAGE
+      value: '__FILL_PERCENTAGE_VALUE__'
+    - name: TOTAL_CHAOS_DURATION
+      value: '__CHAOS_DURATION_VALUE__'
+    - name: RAMP_TIME
+      value: '__RAMP_TIME_VALUE__'
+    - name: DATA_BLOCK_SIZE
+      value: '__DATA_BLOCK_SIZE_VALUE__'
+    - name: TARGET_PODS
+      value: '__TARGET_PODS_VALUE__'
+    - name: EPHEMERAL_STORAGE_MEBIBYTES
+      value: '__EPHEMERAL_STORAGE_MEBIBYTES_VALUE__'
+    - name: NODE_LABEL
+      value: '__NODE_LABEL_VALUE__'
+    - name: PODS_AFFECTED_PERC
+      value: '__PODS_AFFECTED_PERC_VALUE__'
+    - name: DEFAULT_HEALTH_CHECK
+      value: '__DEFAULT_HEALTH_CHECK_VALUE__'
+    - name: LIB_IMAGE
+      value: 'litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0'
+    - name: SOCKET_PATH
+      value: '/run/containerd/containerd.sock'
+    - name: CONTAINER_RUNTIME
+      value: 'containerd'
+    - name: SEQUENCE
+      value: 'parallel'
+    labels:
+      name: disk-fill`
 
 	default:
 		return ""
@@ -1179,6 +1479,136 @@ spec:
               value: "__SOCKET_PATH_VALUE__"
             - name: SEQUENCE
               value: "__SEQUENCE_VALUE__"`
+              
+    case PodAutoscaler:
+        return `apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: nginx-chaos
+  namespace: "{{workflow.parameters.adminModeNamespace}}"
+  labels:
+    workflow_run_id: "{{ workflow.uid }}"
+    workflow_name: __EXPERIMENT_NAME__
+  generateName: pod-autoscaler-ce5
+spec:
+  engineState: active
+  auxiliaryAppInfo: ""
+  appinfo:
+    appns: __APP_NAMESPACE__
+    applabel: __APP_LABEL__
+    appkind: __APP_KIND__
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: pod-autoscaler
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "__CHAOS_DURATION_VALUE__"
+            - name: RAMP_TIME
+              value: "__RAMP_TIME_VALUE__"
+            - name: REPLICA_COUNT
+              value: "__REPLICA_COUNT_VALUE__"
+            - name: DEFAULT_HEALTH_CHECK
+              value: "__DEFAULT_HEALTH_CHECK_VALUE__"`
+
+    case ContainerKill:
+	    return `apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  namespace: "{{workflow.parameters.adminModeNamespace}}"
+  labels:
+    workflow_run_id: "{{ workflow.uid }}"
+    workflow_name: __EXPERIMENT_NAME__
+  generateName: container-kill-ce5
+spec:
+  engineState: active
+  appinfo:
+    appns: __APP_NAMESPACE__
+    applabel: __APP_LABEL__
+    appkind: __APP_KIND__
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: container-kill
+      spec:
+        components:
+          env:
+            - name: TARGET_CONTAINER
+              value: "__TARGET_CONTAINER_VALUE__"
+            - name: RAMP_TIME
+              value: "__RAMP_TIME_VALUE__"
+            - name: TARGET_PODS
+              value: "__TARGET_PODS_VALUE__"
+            - name: CHAOS_INTERVAL
+              value: "__CHAOS_INTERVAL_VALUE__"
+            - name: SIGNAL
+              value: "__SIGNAL_VALUE__"
+            - name: SOCKET_PATH
+              value: "/run/containerd/containerd.sock"
+            - name: CONTAINER_RUNTIME
+              value: "containerd"
+            - name: TOTAL_CHAOS_DURATION
+              value: "__CHAOS_DURATION_VALUE__"
+            - name: PODS_AFFECTED_PERC
+              value: "__PODS_AFFECTED_PERC_VALUE__"
+            - name: NODE_LABEL
+              value: "__NODE_LABEL_VALUE__"
+            - name: DEFAULT_HEALTH_CHECK
+              value: "__DEFAULT_HEALTH_CHECK_VALUE__"
+            - name: LIB_IMAGE
+              value: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0"
+            - name: SEQUENCE
+              value: "parallel"`
+
+    case DiskFill:
+	    return `apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  namespace: "{{workflow.parameters.adminModeNamespace}}"
+  labels:
+    workflow_run_id: "{{ workflow.uid }}"
+    workflow_name: __EXPERIMENT_NAME__
+  generateName: disk-fill-ce5
+spec:
+  engineState: active
+  appinfo:
+    appns: __APP_NAMESPACE__
+    applabel: __APP_LABEL__
+    appkind: __APP_KIND__
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: disk-fill
+      spec:
+        components:
+          env:
+            - name: TARGET_CONTAINER
+              value: "__TARGET_CONTAINER_VALUE__"
+            - name: FILL_PERCENTAGE
+              value: "__FILL_PERCENTAGE_VALUE__"
+            - name: TOTAL_CHAOS_DURATION
+              value: "__CHAOS_DURATION_VALUE__"
+            - name: RAMP_TIME
+              value: "__RAMP_TIME_VALUE__"
+            - name: DATA_BLOCK_SIZE
+              value: "__DATA_BLOCK_SIZE_VALUE__"
+            - name: TARGET_PODS
+              value: "__TARGET_PODS_VALUE__"
+            - name: EPHEMERAL_STORAGE_MEBIBYTES
+              value: "__EPHEMERAL_STORAGE_MEBIBYTES_VALUE__"
+            - name: NODE_LABEL
+              value: "__NODE_LABEL_VALUE__"
+            - name: PODS_AFFECTED_PERC
+              value: "__PODS_AFFECTED_PERC_VALUE__"
+            - name: DEFAULT_HEALTH_CHECK
+              value: "__DEFAULT_HEALTH_CHECK_VALUE__"
+            - name: LIB_IMAGE
+              value: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0"
+            - name: SOCKET_PATH
+              value: "/run/containerd/containerd.sock"
+            - name: CONTAINER_RUNTIME
+              value: "containerd"
+            - name: SEQUENCE
+              value: "parallel"`
 
     default:
         return ""
@@ -1226,6 +1656,24 @@ func ConstructPodNetworkDuplicationExperimentRequest(details *types.ExperimentDe
 	config := GetDefaultExperimentConfig(PodNetworkDuplication)
 	applyProbeConfigFromEnv(&config)
 	return ConstructExperimentRequest(details, experimentID, experimentName, PodNetworkDuplication, config)
+}
+
+func ConstructPodAutoscalerExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
+	config := GetDefaultExperimentConfig(PodAutoscaler)
+	applyProbeConfigFromEnv(&config)
+	return ConstructExperimentRequest(details, experimentID, experimentName, PodAutoscaler, config)
+}
+
+func ConstructContainerKillExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
+	config := GetDefaultExperimentConfig(ContainerKill)
+	applyProbeConfigFromEnv(&config)
+	return ConstructExperimentRequest(details, experimentID, experimentName, ContainerKill, config)
+}
+
+func ConstructDiskFillExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
+	config := GetDefaultExperimentConfig(DiskFill)
+	applyProbeConfigFromEnv(&config)
+	return ConstructExperimentRequest(details, experimentID, experimentName, DiskFill, config)
 }
 
 // applyProbeConfigFromEnv reads probe configuration from environment variables and applies them to the config
