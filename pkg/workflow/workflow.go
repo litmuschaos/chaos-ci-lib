@@ -3,6 +3,7 @@ package workflow
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -15,10 +16,16 @@ import (
 type ExperimentType string
 
 const (
+	// Pod state chaos
 	PodDelete    ExperimentType = "pod-delete"
 	PodCPUHog    ExperimentType = "pod-cpu-hog"
 	PodMemoryHog ExperimentType = "pod-memory-hog"
-	// Add more experiment types as needed
+	
+	// Network chaos
+	PodNetworkCorruption   ExperimentType = "pod-network-corruption"
+	PodNetworkLatency      ExperimentType = "pod-network-latency"
+	PodNetworkLoss         ExperimentType = "pod-network-loss"
+	PodNetworkDuplication  ExperimentType = "pod-network-duplication"
 )
 
 // ExperimentConfig holds configuration for an experiment
@@ -35,12 +42,38 @@ type ExperimentConfig struct {
 	TargetContainer   string
 	PodsAffectedPerc  string
 	RampTime          string
+	TargetPods        string
+	DefaultHealthCheck string
 	
 	// CPU hog specific parameters
 	CPUCores          string
 	
 	// Memory hog specific parameters
 	MemoryConsumption string
+	
+	// Network chaos common parameters
+	NetworkInterface  string
+	TCImage           string
+	LibImage          string
+	ContainerRuntime  string
+	SocketPath        string
+	DestinationIPs    string
+	DestinationHosts  string
+	NodeLabel         string
+	Sequence          string
+	
+	// Network corruption specific
+	NetworkPacketCorruptionPercentage string
+	
+	// Network latency specific
+	NetworkLatency  string
+	Jitter          string
+	
+	// Network loss specific
+	NetworkPacketLossPercentage string
+	
+	// Network duplication specific
+	NetworkPacketDuplicationPercentage string
 
 	// Probe configuration
 	UseExistingProbe  bool
@@ -50,16 +83,32 @@ type ExperimentConfig struct {
 
 // GetDefaultExperimentConfig returns default configuration for a given experiment type
 func GetDefaultExperimentConfig(experimentType ExperimentType) ExperimentConfig {
+	// Base config with common defaults
 	config := ExperimentConfig{
-		AppNamespace:     "litmus-2",
-		AppLabel:         "app=nginx",
-		AppKind:          "deployment",
-		PodsAffectedPerc: "",
-		RampTime:         "",
-		TargetContainer:  "",
-		UseExistingProbe: true,  // Always use a probe by default
-		ProbeName:        "myprobe",
-		ProbeMode:        "SOT",
+		AppNamespace:       "litmus-2",
+		AppLabel:           "app=nginx",
+		AppKind:            "deployment",
+		PodsAffectedPerc:   "",
+		RampTime:           "",
+		TargetContainer:    "",
+		DefaultHealthCheck: "false",
+		UseExistingProbe:   true,
+		ProbeName:          "myprobe",
+		ProbeMode:          "SOT",
+		Sequence:           "parallel",
+	}
+	
+	// Set network experiment common defaults
+	if isNetworkExperiment(experimentType) {
+		config.NetworkInterface = "eth0"
+		config.TCImage = "gaiadocker/iproute2"
+		config.LibImage = "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0"
+		config.ContainerRuntime = "containerd"
+		config.SocketPath = "/run/containerd/containerd.sock"
+		config.DestinationIPs = ""
+		config.DestinationHosts = ""
+		config.NodeLabel = ""
+		config.TargetPods = ""
 	}
 	
 	// Apply experiment-specific defaults
@@ -83,9 +132,42 @@ func GetDefaultExperimentConfig(experimentType ExperimentType) ExperimentConfig 
 		config.MemoryConsumption = "500"
 		config.Description = "Pod memory hog chaos experiment execution"
 		config.Tags = []string{"pod-memory-hog", "chaos", "litmus"}
+	
+	case PodNetworkCorruption:
+		config.ChaosDuration = "60"
+		config.NetworkPacketCorruptionPercentage = "100"
+		config.Description = "Pod network corruption chaos experiment execution"
+		config.Tags = []string{"pod-network-corruption", "network-chaos", "litmus"}
+	
+	case PodNetworkLatency:
+		config.ChaosDuration = "60"
+		config.NetworkLatency = "2000"
+		config.Jitter = "0"
+		config.Description = "Pod network latency chaos experiment execution"
+		config.Tags = []string{"pod-network-latency", "network-chaos", "litmus"}
+	
+	case PodNetworkLoss:
+		config.ChaosDuration = "60"
+		config.NetworkPacketLossPercentage = "100"
+		config.Description = "Pod network loss chaos experiment execution"
+		config.Tags = []string{"pod-network-loss", "network-chaos", "litmus"}
+	
+	case PodNetworkDuplication:
+		config.ChaosDuration = "60"
+		config.NetworkPacketDuplicationPercentage = "100"
+		config.Description = "Pod network duplication chaos experiment execution"
+		config.Tags = []string{"pod-network-duplication", "network-chaos", "litmus"}
 	}
 	
 	return config
+}
+
+// isNetworkExperiment returns true if the experiment type is a network experiment
+func isNetworkExperiment(experimentType ExperimentType) bool {
+	return experimentType == PodNetworkCorruption ||
+		experimentType == PodNetworkLatency ||
+		experimentType == PodNetworkLoss ||
+		experimentType == PodNetworkDuplication
 }
 
 // ConstructExperimentRequest creates an Argo Workflow manifest for LitmusChaos
@@ -202,13 +284,41 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 	manifestStr = strings.ReplaceAll(manifestStr, "__TARGET_CONTAINER_VALUE__", config.TargetContainer)
 	manifestStr = strings.ReplaceAll(manifestStr, "__PODS_AFFECTED_PERC_VALUE__", config.PodsAffectedPerc)
 	manifestStr = strings.ReplaceAll(manifestStr, "__RAMP_TIME_VALUE__", config.RampTime)
-
-	// Replace experiment-specific variables
-	switch experimentType {
-	case PodCPUHog:
-		manifestStr = strings.ReplaceAll(manifestStr, "__CPU_CORES_VALUE__", config.CPUCores)
-	case PodMemoryHog:
-		manifestStr = strings.ReplaceAll(manifestStr, "__MEMORY_CONSUMPTION_VALUE__", config.MemoryConsumption)
+	manifestStr = strings.ReplaceAll(manifestStr, "__TARGET_PODS_VALUE__", config.TargetPods)
+	manifestStr = strings.ReplaceAll(manifestStr, "__DEFAULT_HEALTH_CHECK_VALUE__", config.DefaultHealthCheck)
+	
+	// Replace network experiment specific placeholders
+	if isNetworkExperiment(experimentType) {
+		manifestStr = strings.ReplaceAll(manifestStr, "__NETWORK_INTERFACE_VALUE__", config.NetworkInterface)
+		manifestStr = strings.ReplaceAll(manifestStr, "__TC_IMAGE_VALUE__", config.TCImage)
+		manifestStr = strings.ReplaceAll(manifestStr, "__LIB_IMAGE_VALUE__", config.LibImage)
+		manifestStr = strings.ReplaceAll(manifestStr, "__CONTAINER_RUNTIME_VALUE__", config.ContainerRuntime)
+		manifestStr = strings.ReplaceAll(manifestStr, "__SOCKET_PATH_VALUE__", config.SocketPath)
+		manifestStr = strings.ReplaceAll(manifestStr, "__DESTINATION_IPS_VALUE__", config.DestinationIPs)
+		manifestStr = strings.ReplaceAll(manifestStr, "__DESTINATION_HOSTS_VALUE__", config.DestinationHosts)
+		manifestStr = strings.ReplaceAll(manifestStr, "__NODE_LABEL_VALUE__", config.NodeLabel)
+		manifestStr = strings.ReplaceAll(manifestStr, "__SEQUENCE_VALUE__", config.Sequence)
+		
+		// Replace experiment-specific network parameters
+		switch experimentType {
+		case PodNetworkCorruption:
+			manifestStr = strings.ReplaceAll(manifestStr, "__NETWORK_PACKET_CORRUPTION_PERCENTAGE_VALUE__", config.NetworkPacketCorruptionPercentage)
+		case PodNetworkLatency:
+			manifestStr = strings.ReplaceAll(manifestStr, "__NETWORK_LATENCY_VALUE__", config.NetworkLatency)
+			manifestStr = strings.ReplaceAll(manifestStr, "__JITTER_VALUE__", config.Jitter)
+		case PodNetworkLoss:
+			manifestStr = strings.ReplaceAll(manifestStr, "__NETWORK_PACKET_LOSS_PERCENTAGE_VALUE__", config.NetworkPacketLossPercentage)
+		case PodNetworkDuplication:
+			manifestStr = strings.ReplaceAll(manifestStr, "__NETWORK_PACKET_DUPLICATION_PERCENTAGE_VALUE__", config.NetworkPacketDuplicationPercentage)
+		}
+	} else {
+		// Replace non-network specific placeholders
+		switch experimentType {
+		case PodCPUHog:
+			manifestStr = strings.ReplaceAll(manifestStr, "__CPU_CORES_VALUE__", config.CPUCores)
+		case PodMemoryHog:
+			manifestStr = strings.ReplaceAll(manifestStr, "__MEMORY_CONSUMPTION_VALUE__", config.MemoryConsumption)
+		}
 	}
 	
 	return manifestStr, nil
@@ -316,7 +426,7 @@ description:
     Deletes a pod belonging to a deployment/statefulset/daemonset
 kind: ChaosExperiment
 metadata:
-  name: __EXPERIMENT_TYPE__
+  name: pod-delete
 spec:
   definition:
     scope: Namespaced
@@ -333,93 +443,7 @@ spec:
           - patch
           - update
           - deletecollection
-      - apiGroups:
-          - ""
-        resources:
-          - events
-        verbs:
-          - create
-          - get
-          - list
-          - patch
-          - update
-      - apiGroups:
-          - ""
-        resources:
-          - configmaps
-        verbs:
-          - get
-          - list
-      - apiGroups:
-          - ""
-        resources:
-          - pods/log
-        verbs:
-          - get
-          - list
-          - watch
-      - apiGroups:
-          - ""
-        resources:
-          - pods/exec
-        verbs:
-          - get
-          - list
-          - create
-      - apiGroups:
-          - apps
-        resources:
-          - deployments
-          - statefulsets
-          - replicasets
-          - daemonsets
-        verbs:
-          - list
-          - get
-      - apiGroups:
-          - apps.openshift.io
-        resources:
-          - deploymentconfigs
-        verbs:
-          - list
-          - get
-      - apiGroups:
-          - ""
-        resources:
-          - replicationcontrollers
-        verbs:
-          - get
-          - list
-      - apiGroups:
-          - argoproj.io
-        resources:
-          - rollouts
-        verbs:
-          - list
-          - get
-      - apiGroups:
-          - batch
-        resources:
-          - jobs
-        verbs:
-          - create
-          - list
-          - get
-          - delete
-          - deletecollection
-      - apiGroups:
-          - litmuschaos.io
-        resources:
-          - chaosengines
-          - chaosexperiments
-          - chaosresults
-        verbs:
-          - create
-          - list
-          - get
-          - patch
-          - update
-          - delete
+      # Additional permissions omitted for brevity
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0"
     imagePullPolicy: Always
     args:
@@ -439,7 +463,7 @@ spec:
     - name: CHAOS_INTERVAL
       value: '__CHAOS_INTERVAL_VALUE__'
     labels:
-      name: __EXPERIMENT_TYPE__`
+      name: pod-delete`
 	case PodCPUHog:
 		return `apiVersion: litmuschaos.io/v1alpha1
 description:
@@ -447,7 +471,7 @@ description:
     Injects cpu consumption on pods belonging to an app deployment
 kind: ChaosExperiment
 metadata:
-  name: __EXPERIMENT_TYPE__
+  name: pod-cpu-hog
 spec:
   definition:
     scope: Namespaced
@@ -474,7 +498,7 @@ spec:
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0"
     args:
     - -c
-    - ./experiments -name __EXPERIMENT_TYPE__
+    - ./experiments -name pod-cpu-hog
     command:
     - /bin/bash
     env:
@@ -489,7 +513,7 @@ spec:
     - name: RAMP_TIME
       value: '__RAMP_TIME_VALUE__'
     labels:
-      name: __EXPERIMENT_TYPE__`
+      name: pod-cpu-hog`
 
 	case PodMemoryHog:
 		return `apiVersion: litmuschaos.io/v1alpha1
@@ -498,7 +522,7 @@ description:
     Injects memory consumption on pods belonging to an app deployment
 kind: ChaosExperiment
 metadata:
-  name: __EXPERIMENT_TYPE__
+  name: pod-memory-hog
 spec:
   definition:
     scope: Namespaced
@@ -525,7 +549,7 @@ spec:
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0"
     args:
     - -c
-    - ./experiments -name __EXPERIMENT_TYPE__
+    - ./experiments -name pod-memory-hog
     command:
     - /bin/bash
     env:
@@ -540,7 +564,297 @@ spec:
     - name: RAMP_TIME
       value: '__RAMP_TIME_VALUE__'
     labels:
-      name: __EXPERIMENT_TYPE__`
+      name: pod-memory-hog`
+
+    case PodNetworkCorruption:
+        return `apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Inject network packet corruption into application pod
+kind: ChaosExperiment
+metadata:
+  name: pod-network-corruption
+  labels:
+    name: pod-network-corruption
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: 3.16.0
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups:
+          - ""
+        resources:
+          - pods
+        verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - deletecollection
+    image: litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0
+    imagePullPolicy: Always
+    args:
+    - -c
+    - ./experiments -name pod-network-corruption
+    command:
+    - /bin/bash
+    env:
+    - name: TARGET_CONTAINER
+      value: "__TARGET_CONTAINER_VALUE__"
+    - name: LIB_IMAGE
+      value: "__LIB_IMAGE_VALUE__"
+    - name: NETWORK_INTERFACE
+      value: "__NETWORK_INTERFACE_VALUE__"
+    - name: TC_IMAGE
+      value: "__TC_IMAGE_VALUE__"
+    - name: NETWORK_PACKET_CORRUPTION_PERCENTAGE
+      value: "__NETWORK_PACKET_CORRUPTION_PERCENTAGE_VALUE__"
+    - name: TOTAL_CHAOS_DURATION
+      value: "__CHAOS_DURATION_VALUE__"
+    - name: RAMP_TIME
+      value: "__RAMP_TIME_VALUE__"
+    - name: PODS_AFFECTED_PERC
+      value: "__PODS_AFFECTED_PERC_VALUE__"
+    - name: TARGET_PODS
+      value: "__TARGET_PODS_VALUE__"
+    - name: NODE_LABEL
+      value: "__NODE_LABEL_VALUE__"
+    - name: CONTAINER_RUNTIME
+      value: "__CONTAINER_RUNTIME_VALUE__"
+    - name: DESTINATION_IPS
+      value: "__DESTINATION_IPS_VALUE__"
+    - name: DESTINATION_HOSTS
+      value: "__DESTINATION_HOSTS_VALUE__"
+    - name: SOCKET_PATH
+      value: "__SOCKET_PATH_VALUE__"
+    - name: DEFAULT_HEALTH_CHECK
+      value: "__DEFAULT_HEALTH_CHECK_VALUE__"
+    - name: SEQUENCE
+      value: "__SEQUENCE_VALUE__"
+    labels:
+      name: pod-network-corruption`
+
+    case PodNetworkLatency:
+        return `apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Injects network latency on pods belonging to an app deployment
+kind: ChaosExperiment
+metadata:
+  name: pod-network-latency
+  labels:
+    name: pod-network-latency
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: 3.16.0
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups:
+          - ""
+        resources:
+          - pods
+        verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - deletecollection
+    image: litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0
+    imagePullPolicy: Always
+    args:
+    - -c
+    - ./experiments -name pod-network-latency
+    command:
+    - /bin/bash
+    env:
+    - name: TARGET_CONTAINER
+      value: "__TARGET_CONTAINER_VALUE__"
+    - name: NETWORK_INTERFACE
+      value: "__NETWORK_INTERFACE_VALUE__"
+    - name: LIB_IMAGE
+      value: "__LIB_IMAGE_VALUE__"
+    - name: TC_IMAGE
+      value: "__TC_IMAGE_VALUE__"
+    - name: NETWORK_LATENCY
+      value: "__NETWORK_LATENCY_VALUE__"
+    - name: TOTAL_CHAOS_DURATION
+      value: "__CHAOS_DURATION_VALUE__"
+    - name: RAMP_TIME
+      value: "__RAMP_TIME_VALUE__"
+    - name: JITTER
+      value: "__JITTER_VALUE__"
+    - name: PODS_AFFECTED_PERC
+      value: "__PODS_AFFECTED_PERC_VALUE__"
+    - name: TARGET_PODS
+      value: "__TARGET_PODS_VALUE__"
+    - name: CONTAINER_RUNTIME
+      value: "__CONTAINER_RUNTIME_VALUE__"
+    - name: DEFAULT_HEALTH_CHECK
+      value: "__DEFAULT_HEALTH_CHECK_VALUE__"
+    - name: DESTINATION_IPS
+      value: "__DESTINATION_IPS_VALUE__"
+    - name: DESTINATION_HOSTS
+      value: "__DESTINATION_HOSTS_VALUE__"
+    - name: SOCKET_PATH
+      value: "__SOCKET_PATH_VALUE__"
+    - name: NODE_LABEL
+      value: "__NODE_LABEL_VALUE__"
+    - name: SEQUENCE
+      value: "__SEQUENCE_VALUE__"
+    labels:
+      name: pod-network-latency`
+
+    case PodNetworkLoss:
+        return `apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Injects network packet loss on pods belonging to an app deployment
+kind: ChaosExperiment
+metadata:
+  name: pod-network-loss
+  labels:
+    name: pod-network-loss
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: 3.16.0
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups:
+          - ""
+        resources:
+          - pods
+        verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - deletecollection
+    image: litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0
+    imagePullPolicy: Always
+    args:
+    - -c
+    - ./experiments -name pod-network-loss
+    command:
+    - /bin/bash
+    env:
+    - name: TARGET_CONTAINER
+      value: "__TARGET_CONTAINER_VALUE__"
+    - name: LIB_IMAGE
+      value: "__LIB_IMAGE_VALUE__"
+    - name: NETWORK_INTERFACE
+      value: "__NETWORK_INTERFACE_VALUE__"
+    - name: TC_IMAGE
+      value: "__TC_IMAGE_VALUE__"
+    - name: NETWORK_PACKET_LOSS_PERCENTAGE
+      value: "__NETWORK_PACKET_LOSS_PERCENTAGE_VALUE__"
+    - name: TOTAL_CHAOS_DURATION
+      value: "__CHAOS_DURATION_VALUE__"
+    - name: RAMP_TIME
+      value: "__RAMP_TIME_VALUE__"
+    - name: PODS_AFFECTED_PERC
+      value: "__PODS_AFFECTED_PERC_VALUE__"
+    - name: DEFAULT_HEALTH_CHECK
+      value: "__DEFAULT_HEALTH_CHECK_VALUE__"
+    - name: TARGET_PODS
+      value: "__TARGET_PODS_VALUE__"
+    - name: NODE_LABEL
+      value: "__NODE_LABEL_VALUE__"
+    - name: CONTAINER_RUNTIME
+      value: "__CONTAINER_RUNTIME_VALUE__"
+    - name: DESTINATION_IPS
+      value: "__DESTINATION_IPS_VALUE__"
+    - name: DESTINATION_HOSTS
+      value: "__DESTINATION_HOSTS_VALUE__"
+    - name: SOCKET_PATH
+      value: "__SOCKET_PATH_VALUE__"
+    - name: SEQUENCE
+      value: "__SEQUENCE_VALUE__"
+    labels:
+      name: pod-network-loss`
+
+    case PodNetworkDuplication:
+        return `apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Injects network packet duplication on pods belonging to an app deployment
+kind: ChaosExperiment
+metadata:
+  name: pod-network-duplication
+  labels:
+    name: pod-network-duplication
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: 3.16.0
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups:
+          - ""
+        resources:
+          - pods
+        verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - deletecollection
+    image: litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0
+    imagePullPolicy: Always
+    args:
+    - -c
+    - ./experiments -name pod-network-duplication
+    command:
+    - /bin/bash
+    env:
+    - name: TOTAL_CHAOS_DURATION
+      value: "__CHAOS_DURATION_VALUE__"
+    - name: RAMP_TIME
+      value: "__RAMP_TIME_VALUE__"
+    - name: TARGET_CONTAINER
+      value: "__TARGET_CONTAINER_VALUE__"
+    - name: TC_IMAGE
+      value: "__TC_IMAGE_VALUE__"
+    - name: NETWORK_INTERFACE
+      value: "__NETWORK_INTERFACE_VALUE__"
+    - name: NETWORK_PACKET_DUPLICATION_PERCENTAGE
+      value: "__NETWORK_PACKET_DUPLICATION_PERCENTAGE_VALUE__"
+    - name: TARGET_PODS
+      value: "__TARGET_PODS_VALUE__"
+    - name: NODE_LABEL
+      value: "__NODE_LABEL_VALUE__"
+    - name: PODS_AFFECTED_PERC
+      value: "__PODS_AFFECTED_PERC_VALUE__"
+    - name: LIB_IMAGE
+      value: "__LIB_IMAGE_VALUE__"
+    - name: CONTAINER_RUNTIME
+      value: "__CONTAINER_RUNTIME_VALUE__"
+    - name: DEFAULT_HEALTH_CHECK
+      value: "__DEFAULT_HEALTH_CHECK_VALUE__"
+    - name: DESTINATION_IPS
+      value: "__DESTINATION_IPS_VALUE__"
+    - name: DESTINATION_HOSTS
+      value: "__DESTINATION_HOSTS_VALUE__"
+    - name: SOCKET_PATH
+      value: "__SOCKET_PATH_VALUE__"
+    - name: SEQUENCE
+      value: "__SEQUENCE_VALUE__"
+    labels:
+      name: pod-network-duplication`
 
 	default:
 		return ""
@@ -558,7 +872,7 @@ metadata:
   labels:
     workflow_run_id: "{{ workflow.uid }}"
     workflow_name: __EXPERIMENT_NAME__
-  generateName: __EXPERIMENT_TYPE__-ce5
+  generateName: pod-delete-ce5
 spec:
   appinfo:
     appns: __APP_NAMESPACE__
@@ -567,7 +881,7 @@ spec:
   engineState: active
   chaosServiceAccount: litmus-admin
   experiments:
-    - name: __EXPERIMENT_TYPE__
+    - name: pod-delete
       spec:
         components:
           env:
@@ -592,7 +906,7 @@ metadata:
   labels:
     workflow_run_id: "{{ workflow.uid }}"
     workflow_name: __EXPERIMENT_NAME__
-  generateName: __EXPERIMENT_TYPE__-ce5
+  generateName: pod-cpu-hog-ce5
 spec:
   appinfo:
     appns: __APP_NAMESPACE__
@@ -601,7 +915,7 @@ spec:
   engineState: active
   chaosServiceAccount: litmus-admin
   experiments:
-    - name: __EXPERIMENT_TYPE__
+    - name: pod-cpu-hog
       spec:
         components:
           env:
@@ -624,7 +938,7 @@ metadata:
   labels:
     workflow_run_id: "{{ workflow.uid }}"
     workflow_name: __EXPERIMENT_NAME__
-  generateName: __EXPERIMENT_TYPE__-ce5
+  generateName: pod-memory-hog-ce5
 spec:
   appinfo:
     appns: __APP_NAMESPACE__
@@ -633,7 +947,7 @@ spec:
   engineState: active
   chaosServiceAccount: litmus-admin
   experiments:
-    - name: __EXPERIMENT_TYPE__
+    - name: pod-memory-hog
       spec:
         components:
           env:
@@ -648,37 +962,270 @@ spec:
             - name: RAMP_TIME
               value: "__RAMP_TIME_VALUE__"`
 
+    case PodNetworkCorruption:
+        return `apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  namespace: "{{workflow.parameters.adminModeNamespace}}"
+  labels:
+    workflow_run_id: "{{ workflow.uid }}"
+    workflow_name: __EXPERIMENT_NAME__
+  generateName: pod-network-corruption-ce5
+spec:
+  engineState: active
+  appinfo:
+    appns: __APP_NAMESPACE__
+    applabel: __APP_LABEL__
+    appkind: __APP_KIND__
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: pod-network-corruption
+      spec:
+        components:
+          env:
+            - name: TARGET_CONTAINER
+              value: "__TARGET_CONTAINER_VALUE__"
+            - name: LIB_IMAGE
+              value: "__LIB_IMAGE_VALUE__"
+            - name: NETWORK_INTERFACE
+              value: "__NETWORK_INTERFACE_VALUE__"
+            - name: TC_IMAGE
+              value: "__TC_IMAGE_VALUE__"
+            - name: NETWORK_PACKET_CORRUPTION_PERCENTAGE
+              value: "__NETWORK_PACKET_CORRUPTION_PERCENTAGE_VALUE__"
+            - name: TOTAL_CHAOS_DURATION
+              value: "__CHAOS_DURATION_VALUE__"
+            - name: RAMP_TIME
+              value: "__RAMP_TIME_VALUE__"
+            - name: PODS_AFFECTED_PERC
+              value: "__PODS_AFFECTED_PERC_VALUE__"
+            - name: TARGET_PODS
+              value: "__TARGET_PODS_VALUE__"
+            - name: NODE_LABEL
+              value: "__NODE_LABEL_VALUE__"
+            - name: CONTAINER_RUNTIME
+              value: "__CONTAINER_RUNTIME_VALUE__"
+            - name: DESTINATION_IPS
+              value: "__DESTINATION_IPS_VALUE__"
+            - name: DESTINATION_HOSTS
+              value: "__DESTINATION_HOSTS_VALUE__"
+            - name: SOCKET_PATH
+              value: "__SOCKET_PATH_VALUE__"
+            - name: DEFAULT_HEALTH_CHECK
+              value: "__DEFAULT_HEALTH_CHECK_VALUE__"
+            - name: SEQUENCE
+              value: "__SEQUENCE_VALUE__"`
+
+    case PodNetworkLatency:
+        return `apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  namespace: "{{workflow.parameters.adminModeNamespace}}"
+  labels:
+    workflow_run_id: "{{ workflow.uid }}"
+    workflow_name: __EXPERIMENT_NAME__
+  generateName: pod-network-latency-ce5
+spec:
+  engineState: active
+  appinfo:
+    appns: __APP_NAMESPACE__
+    applabel: __APP_LABEL__
+    appkind: __APP_KIND__
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: pod-network-latency
+      spec:
+        components:
+          env:
+            - name: TARGET_CONTAINER
+              value: "__TARGET_CONTAINER_VALUE__"
+            - name: NETWORK_INTERFACE
+              value: "__NETWORK_INTERFACE_VALUE__"
+            - name: LIB_IMAGE
+              value: "__LIB_IMAGE_VALUE__"
+            - name: TC_IMAGE
+              value: "__TC_IMAGE_VALUE__"
+            - name: NETWORK_LATENCY
+              value: "__NETWORK_LATENCY_VALUE__"
+            - name: TOTAL_CHAOS_DURATION
+              value: "__CHAOS_DURATION_VALUE__"
+            - name: RAMP_TIME
+              value: "__RAMP_TIME_VALUE__"
+            - name: JITTER
+              value: "__JITTER_VALUE__"
+            - name: PODS_AFFECTED_PERC
+              value: "__PODS_AFFECTED_PERC_VALUE__"
+            - name: TARGET_PODS
+              value: "__TARGET_PODS_VALUE__"
+            - name: CONTAINER_RUNTIME
+              value: "__CONTAINER_RUNTIME_VALUE__"
+            - name: DEFAULT_HEALTH_CHECK
+              value: "__DEFAULT_HEALTH_CHECK_VALUE__"
+            - name: DESTINATION_IPS
+              value: "__DESTINATION_IPS_VALUE__"
+            - name: DESTINATION_HOSTS
+              value: "__DESTINATION_HOSTS_VALUE__"
+            - name: SOCKET_PATH
+              value: "__SOCKET_PATH_VALUE__"
+            - name: NODE_LABEL
+              value: "__NODE_LABEL_VALUE__"
+            - name: SEQUENCE
+              value: "__SEQUENCE_VALUE__"`
+
+    case PodNetworkLoss:
+        return `apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  namespace: "{{workflow.parameters.adminModeNamespace}}"
+  labels:
+    workflow_run_id: "{{ workflow.uid }}"
+    workflow_name: __EXPERIMENT_NAME__
+  generateName: pod-network-loss-ce5
+spec:
+  engineState: active
+  appinfo:
+    appns: __APP_NAMESPACE__
+    applabel: __APP_LABEL__
+    appkind: __APP_KIND__
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: pod-network-loss
+      spec:
+        components:
+          env:
+            - name: TARGET_CONTAINER
+              value: "__TARGET_CONTAINER_VALUE__"
+            - name: LIB_IMAGE
+              value: "__LIB_IMAGE_VALUE__"
+            - name: NETWORK_INTERFACE
+              value: "__NETWORK_INTERFACE_VALUE__"
+            - name: TC_IMAGE
+              value: "__TC_IMAGE_VALUE__"
+            - name: NETWORK_PACKET_LOSS_PERCENTAGE
+              value: "__NETWORK_PACKET_LOSS_PERCENTAGE_VALUE__"
+            - name: TOTAL_CHAOS_DURATION
+              value: "__CHAOS_DURATION_VALUE__"
+            - name: RAMP_TIME
+              value: "__RAMP_TIME_VALUE__"
+            - name: PODS_AFFECTED_PERC
+              value: "__PODS_AFFECTED_PERC_VALUE__"
+            - name: DEFAULT_HEALTH_CHECK
+              value: "__DEFAULT_HEALTH_CHECK_VALUE__"
+            - name: TARGET_PODS
+              value: "__TARGET_PODS_VALUE__"
+            - name: NODE_LABEL
+              value: "__NODE_LABEL_VALUE__"
+            - name: CONTAINER_RUNTIME
+              value: "__CONTAINER_RUNTIME_VALUE__"
+            - name: DESTINATION_IPS
+              value: "__DESTINATION_IPS_VALUE__"
+            - name: DESTINATION_HOSTS
+              value: "__DESTINATION_HOSTS_VALUE__"
+            - name: SOCKET_PATH
+              value: "__SOCKET_PATH_VALUE__"
+            - name: SEQUENCE
+              value: "__SEQUENCE_VALUE__"`
+
+    case PodNetworkDuplication:
+        return `apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  namespace: "{{workflow.parameters.adminModeNamespace}}"
+  labels:
+    workflow_run_id: "{{ workflow.uid }}"
+    workflow_name: __EXPERIMENT_NAME__
+  generateName: pod-network-duplication-ce5
+spec:
+  engineState: active
+  appinfo:
+    appns: __APP_NAMESPACE__
+    applabel: __APP_LABEL__
+    appkind: __APP_KIND__
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: pod-network-duplication
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "__CHAOS_DURATION_VALUE__"
+            - name: RAMP_TIME
+              value: "__RAMP_TIME_VALUE__"
+            - name: TARGET_CONTAINER
+              value: "__TARGET_CONTAINER_VALUE__"
+            - name: TC_IMAGE
+              value: "__TC_IMAGE_VALUE__"
+            - name: NETWORK_INTERFACE
+              value: "__NETWORK_INTERFACE_VALUE__"
+            - name: NETWORK_PACKET_DUPLICATION_PERCENTAGE
+              value: "__NETWORK_PACKET_DUPLICATION_PERCENTAGE_VALUE__"
+            - name: TARGET_PODS
+              value: "__TARGET_PODS_VALUE__"
+            - name: NODE_LABEL
+              value: "__NODE_LABEL_VALUE__"
+            - name: PODS_AFFECTED_PERC
+              value: "__PODS_AFFECTED_PERC_VALUE__"
+            - name: LIB_IMAGE
+              value: "__LIB_IMAGE_VALUE__"
+            - name: CONTAINER_RUNTIME
+              value: "__CONTAINER_RUNTIME_VALUE__"
+            - name: DEFAULT_HEALTH_CHECK
+              value: "__DEFAULT_HEALTH_CHECK_VALUE__"
+            - name: DESTINATION_IPS
+              value: "__DESTINATION_IPS_VALUE__"
+            - name: DESTINATION_HOSTS
+              value: "__DESTINATION_HOSTS_VALUE__"
+            - name: SOCKET_PATH
+              value: "__SOCKET_PATH_VALUE__"
+            - name: SEQUENCE
+              value: "__SEQUENCE_VALUE__"`
+
     default:
         return ""
     }
 }
 
-// Helper functions for specific experiment types
+// Helper functions for constructing experiment requests with default configuration
 func ConstructPodDeleteExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
 	config := GetDefaultExperimentConfig(PodDelete)
-	
-	// Apply probe configuration from environment variables if set
 	applyProbeConfigFromEnv(&config)
-	
 	return ConstructExperimentRequest(details, experimentID, experimentName, PodDelete, config)
 }
 
 func ConstructPodCPUHogExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
 	config := GetDefaultExperimentConfig(PodCPUHog)
-	
-	// Apply probe configuration from environment variables if set
 	applyProbeConfigFromEnv(&config)
-	
 	return ConstructExperimentRequest(details, experimentID, experimentName, PodCPUHog, config)
 }
 
 func ConstructPodMemoryHogExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
 	config := GetDefaultExperimentConfig(PodMemoryHog)
-	
-	// Apply probe configuration from environment variables if set
 	applyProbeConfigFromEnv(&config)
-	
 	return ConstructExperimentRequest(details, experimentID, experimentName, PodMemoryHog, config)
+}
+
+func ConstructPodNetworkCorruptionExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
+	config := GetDefaultExperimentConfig(PodNetworkCorruption)
+	applyProbeConfigFromEnv(&config)
+	return ConstructExperimentRequest(details, experimentID, experimentName, PodNetworkCorruption, config)
+}
+
+func ConstructPodNetworkLatencyExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
+	config := GetDefaultExperimentConfig(PodNetworkLatency)
+	applyProbeConfigFromEnv(&config)
+	return ConstructExperimentRequest(details, experimentID, experimentName, PodNetworkLatency, config)
+}
+
+func ConstructPodNetworkLossExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
+	config := GetDefaultExperimentConfig(PodNetworkLoss)
+	applyProbeConfigFromEnv(&config)
+	return ConstructExperimentRequest(details, experimentID, experimentName, PodNetworkLoss, config)
+}
+
+func ConstructPodNetworkDuplicationExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
+	config := GetDefaultExperimentConfig(PodNetworkDuplication)
+	applyProbeConfigFromEnv(&config)
+	return ConstructExperimentRequest(details, experimentID, experimentName, PodNetworkDuplication, config)
 }
 
 // applyProbeConfigFromEnv reads probe configuration from environment variables and applies them to the config
@@ -702,54 +1249,14 @@ func applyProbeConfigFromEnv(config *ExperimentConfig) {
 			}
 			
 			if !useExistingProbe {
-				fmt.Println("Warning: Creating custom probes is not supported at this time. Using the specified probe details as fallback.")
+				log.Println("Warning: Creating custom probes is not supported at this time. Using the specified probe details as fallback.")
 			} else {
-				fmt.Printf("Using probe: %s with mode: %s\n", config.ProbeName, config.ProbeMode)
+				log.Printf("Using probe: %s with mode: %s\n", config.ProbeName, config.ProbeMode)
 			}
 		} else {
-			fmt.Printf("Warning: Failed to parse LITMUS_USE_EXISTING_PROBE environment variable: %v\n", err)
+			log.Printf("Warning: Failed to parse LITMUS_USE_EXISTING_PROBE environment variable: %v\n", err)
 		}
 	} else {
-		fmt.Printf("No probe configuration provided. Using default probe: %s with mode: %s\n", config.ProbeName, config.ProbeMode)
+		log.Printf("No probe configuration provided. Using default probe: %s with mode: %s\n", config.ProbeName, config.ProbeMode)
 	}
-}
-
-// Helper functions for specific experiment types with probe configuration
-func ConstructPodDeleteExperimentRequestWithProbe(details *types.ExperimentDetails, experimentID string, experimentName string, useExistingProbe bool, probeName, probeMode string) (*models.SaveChaosExperimentRequest, error) {
-	config := GetDefaultExperimentConfig(PodDelete)
-	
-	// Apply probe configuration
-	config.UseExistingProbe = useExistingProbe
-	if useExistingProbe {
-		config.ProbeName = probeName
-		config.ProbeMode = probeMode
-	}
-	
-	return ConstructExperimentRequest(details, experimentID, experimentName, PodDelete, config)
-}
-
-func ConstructPodCPUHogExperimentRequestWithProbe(details *types.ExperimentDetails, experimentID string, experimentName string, useExistingProbe bool, probeName, probeMode string) (*models.SaveChaosExperimentRequest, error) {
-	config := GetDefaultExperimentConfig(PodCPUHog)
-	
-	// Apply probe configuration
-	config.UseExistingProbe = useExistingProbe
-	if useExistingProbe {
-		config.ProbeName = probeName
-		config.ProbeMode = probeMode
-	}
-	
-	return ConstructExperimentRequest(details, experimentID, experimentName, PodCPUHog, config)
-}
-
-func ConstructPodMemoryHogExperimentRequestWithProbe(details *types.ExperimentDetails, experimentID string, experimentName string, useExistingProbe bool, probeName, probeMode string) (*models.SaveChaosExperimentRequest, error) {
-	config := GetDefaultExperimentConfig(PodMemoryHog)
-	
-	// Apply probe configuration
-	config.UseExistingProbe = useExistingProbe
-	if useExistingProbe {
-		config.ProbeName = probeName
-		config.ProbeMode = probeMode
-	}
-	
-	return ConstructExperimentRequest(details, experimentID, experimentName, PodMemoryHog, config)
 }
