@@ -84,6 +84,17 @@ func GetENV(experimentDetails *types.ExperimentDetails, expName, engineName stri
 	experimentDetails.InstallInfra, _ = strconv.ParseBool(Getenv("INSTALL_INFRA", "true"))
 	experimentDetails.UseExistingInfra, _ = strconv.ParseBool(Getenv("USE_EXISTING_INFRA", "false"))
 	experimentDetails.ExistingInfraID = Getenv("EXISTING_INFRA_ID", "")
+	
+	// Probe configuration
+	experimentDetails.CreateProbe, _ = strconv.ParseBool(Getenv("LITMUS_CREATE_PROBE", "false"))
+	experimentDetails.ProbeType = Getenv("LITMUS_PROBE_TYPE", "httpProbe")
+	experimentDetails.ProbeName = Getenv("LITMUS_PROBE_NAME", "http-probe")
+	experimentDetails.ProbeMode = Getenv("LITMUS_PROBE_MODE", "SOT")
+	experimentDetails.ProbeURL = Getenv("LITMUS_PROBE_URL", "http://localhost:8080/health")
+	experimentDetails.ProbeTimeout = Getenv("LITMUS_PROBE_TIMEOUT", "30s")
+	experimentDetails.ProbeInterval = Getenv("LITMUS_PROBE_INTERVAL", "10s")
+	experimentDetails.ProbeAttempts, _ = strconv.Atoi(Getenv("LITMUS_PROBE_ATTEMPTS", "1"))
+	experimentDetails.ProbeResponseCode = Getenv("LITMUS_PROBE_RESPONSE_CODE", "200")
 }
 
 // Getenv fetch the env and set the default value, if any

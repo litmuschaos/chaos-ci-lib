@@ -77,4 +77,16 @@ type ExperimentDetails struct {
 	InstallInfra              bool   // Flag to determine if infrastructure should be installed
 	UseExistingInfra          bool   // Flag to determine if existing infrastructure should be used
 	ExistingInfraID           string // ID of existing infrastructure if UseExistingInfra is true
+	
+	// Probe configuration
+	CreateProbe               bool   // Flag to determine if a new probe should be created
+	ProbeType                 string // Type of probe (http, cmd, etc.)
+	ProbeName                 string // Name of the probe
+	ProbeMode                 string // Mode of the probe (SOT, EOT, Edge, Continuous, etc.)
+	ProbeURL                  string // URL for HTTP probe
+	ProbeTimeout              string // Timeout for probe
+	ProbeInterval             string // Interval for probe
+	ProbeAttempts             int    // Number of attempts for probe
+	ProbeResponseCode         string // Expected HTTP response code for HTTP probe
+	CreatedProbeID            string // ID of the created probe
 }

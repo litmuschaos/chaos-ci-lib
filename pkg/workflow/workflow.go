@@ -8,7 +8,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/litmuschaos/chaos-ci-lib/pkg/environment"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/types"
+	probe "github.com/litmuschaos/litmus-go-sdk/pkg/apis/probe"
 	models "github.com/litmuschaos/litmus/chaoscenter/graphql/server/graph/model"
 )
 
@@ -1697,9 +1699,13 @@ func applyProbeConfigFromEnv(config *ExperimentConfig) {
 			}
 			
 			if !useExistingProbe {
-				log.Println("Warning: Creating custom probes is not supported at this time. Using the specified probe details as fallback.")
+				// We now support creating custom probes through the SDK.
+				// This is handled in the CreateProbe function which should be called before experiment creation.
+				// Environment variables LITMUS_CREATE_PROBE, LITMUS_PROBE_TYPE, etc. control probe creation.
+				log.Printf("Note: To create a custom probe, set LITMUS_CREATE_PROBE=true along with other probe parameters.")
+				log.Printf("For now, using specified probe details: %s with mode: %s\n", config.ProbeName, config.ProbeMode)
 			} else {
-				log.Printf("Using probe: %s with mode: %s\n", config.ProbeName, config.ProbeMode)
+				log.Printf("Using existing probe: %s with mode: %s\n", config.ProbeName, config.ProbeMode)
 			}
 		} else {
 			log.Printf("Warning: Failed to parse LITMUS_USE_EXISTING_PROBE environment variable: %v\n", err)
@@ -1707,4 +1713,102 @@ func applyProbeConfigFromEnv(config *ExperimentConfig) {
 	} else {
 		log.Printf("No probe configuration provided. Using default probe: %s with mode: %s\n", config.ProbeName, config.ProbeMode)
 	}
+}
+
+// Helper function to create an int pointer
+func intPtr(i int) *int {
+	return &i
+}
+
+// CreateProbe creates a probe using the experiment details
+func CreateProbe(details *types.ExperimentDetails, clients *environment.ClientSets) error {
+	if !details.CreateProbe {
+		log.Println("Skipping probe creation as LITMUS_CREATE_PROBE is not set to true")
+		return nil
+	}
+
+	log.Printf("Creating a new probe with name: %s", details.ProbeName)
+	
+	// Create credentials using the client
+	credentials := clients.GetSDKCredentials()
+	
+	// Setup defaults for HTTP probe
+	trueBool := true
+	desc := fmt.Sprintf("HTTP probe for %s", details.ProbeName)
+	
+	// Prepare probe request based on probe type
+	var probeReq probe.ProbeRequest
+	
+	switch details.ProbeType {
+	case "httpProbe":
+		probeReq = probe.ProbeRequest{
+			Name:               details.ProbeName,
+			Description:        &desc,
+			Type:               probe.ProbeTypeHTTPProbe,
+			InfrastructureType: probe.InfrastructureTypeKubernetes,
+			Tags:               []string{"http", "probe", "chaos"},
+			KubernetesHTTPProperties: &probe.KubernetesHTTPProbeRequest{
+				ProbeTimeout: details.ProbeTimeout,
+				Interval:     details.ProbeInterval,
+				Attempt:      &details.ProbeAttempts,
+				URL:          details.ProbeURL,
+				Method: &probe.Method{
+					Get: &probe.GetMethod{
+						ResponseCode: details.ProbeResponseCode,
+						Criteria:     "==",
+					},
+				},
+				InsecureSkipVerify: &trueBool,
+			},
+		}
+	case "cmdProbe":
+		probeReq = probe.ProbeRequest{
+			Name:               details.ProbeName,
+			Description:        &desc,
+			Type:               probe.ProbeTypeCMDProbe,
+			InfrastructureType: probe.InfrastructureTypeKubernetes,
+			Tags:               []string{"cmd", "probe", "chaos"},
+			KubernetesCMDProperties: &probe.KubernetesCMDProbeRequest{
+				Command:      "ls -l",
+				ProbeTimeout: details.ProbeTimeout,
+				Interval:     details.ProbeInterval,
+				Attempt:      &details.ProbeAttempts,
+				Comparator: &probe.ComparatorInput{
+					Type:     "string",
+					Criteria: "contains",
+					Value:    "total",
+				},
+			},
+		}
+	default:
+		return fmt.Errorf("unsupported probe type: %s", details.ProbeType)
+	}
+	
+	// Create probe
+	createdProbe, err := probe.CreateProbe(probeReq, credentials.ProjectID, credentials)
+	if err != nil {
+		log.Printf("Failed to create probe: %v", err)
+		return err
+	}
+	
+	log.Printf("Successfully created probe: %s", createdProbe.Name)
+	
+	// Store probe ID for later use - the probe might not have an ID field,
+	// so we'll just store the name for now
+	details.CreatedProbeID = createdProbe.Name
+	
+	return nil
+}
+
+// CleanupProbe deletes a probe created by CreateProbe
+func CleanupProbe(details *types.ExperimentDetails, clients *environment.ClientSets) error {
+	if !details.CreateProbe || details.CreatedProbeID == "" {
+		log.Println("Skipping probe cleanup as no probe was created or probe ID is missing")
+		return nil
+	}
+
+	log.Printf("Note: Automatic probe cleanup is not currently supported in the SDK")
+	log.Printf("To manually delete the probe %s, use the Litmus Portal UI", details.CreatedProbeID)
+	
+	return nil
 }
