@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/litmuschaos/chaos-ci-lib/pkg"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/environment"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/infrastructure"
@@ -44,10 +43,7 @@ var _ = Describe("BDD of running node-cpu-hog experiment", func() {
 			clients = environment.ClientSets{}
 			err = nil
 
-			//Getting kubeConfig and Generate ClientSets
-			By("[PreChaos]: Getting kubeconfig and generate clientset")
-			err = clients.GenerateClientSetFromKubeConfig()
-			Expect(err).To(BeNil(), "Unable to Get the kubeconfig, due to {%v}", err)
+			//  
 
 			//Fetching all the default ENV
 			By("[PreChaos]: Fetching all default ENVs")
@@ -62,6 +58,10 @@ var _ = Describe("BDD of running node-cpu-hog experiment", func() {
 			// Setup infrastructure using the new module
 			By("[PreChaos]: Setting up infrastructure")
 			err = infrastructure.SetupInfrastructure(&experimentsDetails, &clients)
+			if experimentsDetails.ConnectedInfraID == "" && experimentsDetails.UseExistingInfra && experimentsDetails.ExistingInfraID != "" {
+				experimentsDetails.ConnectedInfraID = experimentsDetails.ExistingInfraID
+				klog.Infof("Manually set ConnectedInfraID to %s from ExistingInfraID", experimentsDetails.ConnectedInfraID)
+			}
 			Expect(err).To(BeNil(), "Failed to setup infrastructure, due to {%v}", err)
 
 			// Validate that infrastructure ID is properly set
@@ -87,9 +87,10 @@ var _ = Describe("BDD of running node-cpu-hog experiment", func() {
 
 			// 1. Construct Experiment Request
 			By("[SDK Prepare]: Constructing Chaos Experiment Request")
-			experimentName := experimentsDetails.EngineName
-			experimentID := experimentName + "-" + uuid.New().String()[:8]
-			experimentRequest, errConstruct := ConstructNodeCPUHogExperimentRequest(&experimentsDetails, experimentID)
+			experimentName := pkg.GenerateUniqueExperimentName("node-cpu-hog")
+			experimentsDetails.ExperimentName = experimentName
+			experimentID := pkg.GenerateExperimentID()
+			experimentRequest, errConstruct := workflow.ConstructNodeCPUHogExperimentRequest(&experimentsDetails, experimentID, experimentName)
 			Expect(errConstruct).To(BeNil(), "Failed to construct experiment request: %v", errConstruct)
 
 			// 2. Create and Run Experiment via SDK

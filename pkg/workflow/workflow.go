@@ -38,6 +38,11 @@ const (
 	
 	// Disk chaos
 	DiskFill  ExperimentType = "disk-fill"
+	
+	// Node chaos
+	NodeCPUHog    ExperimentType = "node-cpu-hog"
+	NodeMemoryHog ExperimentType = "node-memory-hog"
+	NodeIOStress  ExperimentType = "node-io-stress"
 )
 
 // ExperimentConfig holds configuration for an experiment
@@ -201,6 +206,23 @@ func GetDefaultExperimentConfig(experimentType ExperimentType) ExperimentConfig 
 		config.EphemeralStorageMebibytes = ""
 		config.Description = "Disk fill chaos experiment execution"
 		config.Tags = []string{"disk-fill", "chaos", "litmus"}
+		
+	case NodeCPUHog:
+		config.ChaosDuration = "60"
+		config.CPUCores = "2"
+		config.Description = "Node CPU hog chaos experiment execution"
+		config.Tags = []string{"node-cpu-hog", "chaos", "litmus"}
+		
+	case NodeMemoryHog:
+		config.ChaosDuration = "60"
+		config.MemoryConsumption = "500"
+		config.Description = "Node memory hog chaos experiment execution" 
+		config.Tags = []string{"node-memory-hog", "chaos", "litmus"}
+		
+	case NodeIOStress:
+		config.ChaosDuration = "60"
+		config.Description = "Node IO stress chaos experiment execution"
+		config.Tags = []string{"node-io-stress", "chaos", "litmus"}
 	}
 	
 	return config
@@ -1182,6 +1204,176 @@ spec:
     labels:
       name: disk-fill`
 
+	case NodeCPUHog:
+		return `apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Injects cpu consumption on node
+kind: ChaosExperiment
+metadata:
+  name: node-cpu-hog
+  labels:
+    name: node-cpu-hog
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: 3.16.0
+spec:
+  definition:
+    scope: Cluster
+    permissions:
+      - apiGroups:
+          - ""
+        resources:
+          - pods
+        verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - deletecollection
+    image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0"
+    imagePullPolicy: Always
+    args:
+    - -c
+    - ./experiments -name node-cpu-hog
+    command:
+    - /bin/bash
+    env:
+    - name: TOTAL_CHAOS_DURATION
+      value: '__CHAOS_DURATION_VALUE__'
+    - name: RAMP_TIME
+      value: '__RAMP_TIME_VALUE__'
+    - name: NODE_CPU_CORE
+      value: '__CPU_CORES_VALUE__'
+    - name: NODES_AFFECTED_PERC
+      value: '__PODS_AFFECTED_PERC_VALUE__'
+    - name: TARGET_NODES
+      value: '__TARGET_PODS_VALUE__'
+    - name: DEFAULT_HEALTH_CHECK
+      value: '__DEFAULT_HEALTH_CHECK_VALUE__'
+    - name: LIB_IMAGE
+      value: 'litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0'
+    - name: SEQUENCE
+      value: 'parallel'
+    labels:
+      name: node-cpu-hog`
+      
+	case NodeMemoryHog:
+		return `apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Injects memory consumption on node
+kind: ChaosExperiment
+metadata:
+  name: node-memory-hog
+  labels:
+    name: node-memory-hog
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: 3.16.0
+spec:
+  definition:
+    scope: Cluster
+    permissions:
+      - apiGroups:
+          - ""
+        resources:
+          - pods
+        verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - deletecollection
+    image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0"
+    imagePullPolicy: Always
+    args:
+    - -c
+    - ./experiments -name node-memory-hog
+    command:
+    - /bin/bash
+    env:
+    - name: TOTAL_CHAOS_DURATION
+      value: '__CHAOS_DURATION_VALUE__'
+    - name: RAMP_TIME
+      value: '__RAMP_TIME_VALUE__'
+    - name: MEMORY_CONSUMPTION
+      value: '__MEMORY_CONSUMPTION_VALUE__'
+    - name: NODES_AFFECTED_PERC
+      value: '__PODS_AFFECTED_PERC_VALUE__'
+    - name: TARGET_NODES
+      value: '__TARGET_PODS_VALUE__'
+    - name: DEFAULT_HEALTH_CHECK
+      value: '__DEFAULT_HEALTH_CHECK_VALUE__'
+    - name: LIB_IMAGE
+      value: 'litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0'
+    - name: SEQUENCE
+      value: 'parallel'
+    labels:
+      name: node-memory-hog`
+      
+	case NodeIOStress:
+		return `apiVersion: litmuschaos.io/v1alpha1
+description:
+  message: |
+    Injects IO stress on node
+kind: ChaosExperiment
+metadata:
+  name: node-io-stress
+  labels:
+    name: node-io-stress
+    app.kubernetes.io/part-of: litmus
+    app.kubernetes.io/component: chaosexperiment
+    app.kubernetes.io/version: 3.16.0
+spec:
+  definition:
+    scope: Cluster
+    permissions:
+      - apiGroups:
+          - ""
+        resources:
+          - pods
+        verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - deletecollection
+    image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0"
+    imagePullPolicy: Always
+    args:
+    - -c
+    - ./experiments -name node-io-stress
+    command:
+    - /bin/bash
+    env:
+    - name: TOTAL_CHAOS_DURATION
+      value: '__CHAOS_DURATION_VALUE__'
+    - name: RAMP_TIME
+      value: '__RAMP_TIME_VALUE__'
+    - name: FILESYSTEM_UTILIZATION_PERCENTAGE
+      value: '10'
+    - name: FILESYSTEM_UTILIZATION_BYTES
+      value: ''
+    - name: NODES_AFFECTED_PERC
+      value: '__PODS_AFFECTED_PERC_VALUE__'
+    - name: TARGET_NODES
+      value: '__TARGET_PODS_VALUE__'
+    - name: DEFAULT_HEALTH_CHECK
+      value: '__DEFAULT_HEALTH_CHECK_VALUE__'
+    - name: LIB_IMAGE
+      value: 'litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0'
+    - name: SEQUENCE
+      value: 'parallel'
+    labels:
+      name: node-io-stress`
+
 	default:
 		return ""
 	}
@@ -1631,6 +1823,107 @@ spec:
               value: "containerd"
             - name: SEQUENCE
               value: "parallel"`
+			  
+	case NodeCPUHog:
+		return `apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  namespace: "{{workflow.parameters.adminModeNamespace}}"
+  labels:
+    workflow_run_id: "{{ workflow.uid }}"
+    workflow_name: __EXPERIMENT_NAME__
+  generateName: node-cpu-hog-ce5
+spec:
+  engineState: active
+  annotationCheck: "false"
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: node-cpu-hog
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "__CHAOS_DURATION_VALUE__"
+            - name: RAMP_TIME
+              value: "__RAMP_TIME_VALUE__"
+            - name: NODE_CPU_CORE
+              value: "__CPU_CORES_VALUE__"
+            - name: NODES_AFFECTED_PERC
+              value: "__PODS_AFFECTED_PERC_VALUE__"
+            - name: TARGET_NODES
+              value: "__TARGET_PODS_VALUE__"
+            - name: DEFAULT_HEALTH_CHECK
+              value: "__DEFAULT_HEALTH_CHECK_VALUE__"
+            - name: SEQUENCE
+              value: "parallel"`
+			  
+	case NodeMemoryHog:
+		return `apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  namespace: "{{workflow.parameters.adminModeNamespace}}"
+  labels:
+    workflow_run_id: "{{ workflow.uid }}"
+    workflow_name: __EXPERIMENT_NAME__
+  generateName: node-memory-hog-ce5
+spec:
+  engineState: active
+  annotationCheck: "false"
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: node-memory-hog
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "__CHAOS_DURATION_VALUE__"
+            - name: RAMP_TIME
+              value: "__RAMP_TIME_VALUE__"
+            - name: MEMORY_CONSUMPTION
+              value: "__MEMORY_CONSUMPTION_VALUE__"
+            - name: NODES_AFFECTED_PERC
+              value: "__PODS_AFFECTED_PERC_VALUE__"
+            - name: TARGET_NODES
+              value: "__TARGET_PODS_VALUE__"
+            - name: DEFAULT_HEALTH_CHECK
+              value: "__DEFAULT_HEALTH_CHECK_VALUE__"
+            - name: SEQUENCE
+              value: "parallel"`
+			  
+	case NodeIOStress:
+		return `apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  namespace: "{{workflow.parameters.adminModeNamespace}}"
+  labels:
+    workflow_run_id: "{{ workflow.uid }}"
+    workflow_name: __EXPERIMENT_NAME__
+  generateName: node-io-stress-ce5
+spec:
+  engineState: active
+  annotationCheck: "false"
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: node-io-stress
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "__CHAOS_DURATION_VALUE__"
+            - name: RAMP_TIME
+              value: "__RAMP_TIME_VALUE__"
+            - name: FILESYSTEM_UTILIZATION_PERCENTAGE
+              value: "10"
+            - name: FILESYSTEM_UTILIZATION_BYTES
+              value: ""
+            - name: NODES_AFFECTED_PERC
+              value: "__PODS_AFFECTED_PERC_VALUE__"
+            - name: TARGET_NODES
+              value: "__TARGET_PODS_VALUE__"
+            - name: DEFAULT_HEALTH_CHECK
+              value: "__DEFAULT_HEALTH_CHECK_VALUE__"
+            - name: SEQUENCE
+              value: "parallel"`
 
     default:
         return ""
@@ -1696,6 +1989,24 @@ func ConstructDiskFillExperimentRequest(details *types.ExperimentDetails, experi
 	config := GetDefaultExperimentConfig(DiskFill)
 	applyProbeConfigFromEnv(&config)
 	return ConstructExperimentRequest(details, experimentID, experimentName, DiskFill, config)
+}
+
+func ConstructNodeCPUHogExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
+	config := GetDefaultExperimentConfig(NodeCPUHog)
+	applyProbeConfigFromEnv(&config)
+	return ConstructExperimentRequest(details, experimentID, experimentName, NodeCPUHog, config)
+}
+
+func ConstructNodeMemoryHogExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
+	config := GetDefaultExperimentConfig(NodeMemoryHog)
+	applyProbeConfigFromEnv(&config)
+	return ConstructExperimentRequest(details, experimentID, experimentName, NodeMemoryHog, config)
+}
+
+func ConstructNodeIOStressExperimentRequest(details *types.ExperimentDetails, experimentID string, experimentName string) (*models.SaveChaosExperimentRequest, error) {
+	config := GetDefaultExperimentConfig(NodeIOStress)
+	applyProbeConfigFromEnv(&config)
+	return ConstructExperimentRequest(details, experimentID, experimentName, NodeIOStress, config)
 }
 
 // applyProbeConfigFromEnv reads probe configuration from environment variables and applies them to the config
