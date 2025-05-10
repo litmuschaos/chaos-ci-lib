@@ -419,6 +419,20 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 			} else {
 				manifestStr = strings.ReplaceAll(manifestStr, "__NODE_LABEL_VALUE__", config.NodeLabel)
 			}
+		case NodeCPUHog:
+			// NODE_LABEL specific handling (similar to disk-fill)
+			if config.NodeLabel == "" {
+				// Remove NODE_LABEL environment variable if empty
+				nodeLabelRegex1 := regexp.MustCompile(`\s*-\s+name:\s+NODE_LABEL\s+value:\s+["']?__NODE_LABEL_VALUE__["']?\s*`)
+				nodeLabelRegex2 := regexp.MustCompile(`\s*-\s+name:\s+["']?NODE_LABEL["']?\s+value:\s+.*\s*`)
+				nodeLabelRegex3 := regexp.MustCompile(`\s*name:\s+["']?NODE_LABEL["']?\s+value:\s+.*\s*`)
+				
+				manifestStr = nodeLabelRegex1.ReplaceAllString(manifestStr, "")
+				manifestStr = nodeLabelRegex2.ReplaceAllString(manifestStr, "")
+				manifestStr = nodeLabelRegex3.ReplaceAllString(manifestStr, "")
+			} else {
+				manifestStr = strings.ReplaceAll(manifestStr, "__NODE_LABEL_VALUE__", config.NodeLabel)
+			}
 		}
 	}
 	
@@ -1246,7 +1260,9 @@ spec:
     - name: RAMP_TIME
       value: '__RAMP_TIME_VALUE__'
     - name: NODE_CPU_CORE
-      value: '__CPU_CORES_VALUE__'
+      value: ''
+    - name: CPU_LOAD
+      value: '100'
     - name: NODES_AFFECTED_PERC
       value: '__PODS_AFFECTED_PERC_VALUE__'
     - name: TARGET_NODES
@@ -1847,7 +1863,9 @@ spec:
             - name: RAMP_TIME
               value: "__RAMP_TIME_VALUE__"
             - name: NODE_CPU_CORE
-              value: "__CPU_CORES_VALUE__"
+              value: ""
+            - name: CPU_LOAD
+              value: "100"
             - name: NODES_AFFECTED_PERC
               value: "__PODS_AFFECTED_PERC_VALUE__"
             - name: TARGET_NODES
