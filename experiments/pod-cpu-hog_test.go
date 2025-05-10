@@ -65,6 +65,15 @@ var _ = Describe("BDD of running pod-cpu-hog experiment", func() {
 			
 			// Validate that infrastructure ID is properly set
 			Expect(experimentsDetails.ConnectedInfraID).NotTo(BeEmpty(), "Setup failed: ConnectedInfraID is empty after connection attempt.")
+
+			// Setup probe if configured to do so
+			if experimentsDetails.CreateProbe {
+				By("[PreChaos]: Setting up probe")
+				err = workflow.CreateProbe(&experimentsDetails, &clients)
+				Expect(err).To(BeNil(), "Failed to create probe, due to {%v}", err)
+				// Validate that probe was created successfully
+				Expect(experimentsDetails.CreatedProbeID).NotTo(BeEmpty(), "Probe creation failed: CreatedProbeID is empty")
+			}
 		})
 
 		It("Should run the pod cpu hog experiment via SDK", func() {
@@ -164,6 +173,13 @@ var _ = Describe("BDD of running pod-cpu-hog experiment", func() {
 			By("[CleanUp]: Cleaning up infrastructure")
 			errDisconnect := infrastructure.DisconnectInfrastructure(&experimentsDetails, &clients)
 			Expect(errDisconnect).To(BeNil(), "Failed to clean up infrastructure, due to {%v}", errDisconnect)
+
+			// Clean up probe if one was created
+			if experimentsDetails.CreateProbe && experimentsDetails.CreatedProbeID != "" {
+				By("[CleanUp]: Cleaning up probe")
+				errCleanupProbe := workflow.CleanupProbe(&experimentsDetails, &clients)
+				Expect(errCleanupProbe).To(BeNil(), "Failed to clean up probe, due to {%v}", errCleanupProbe)
+			}
 		})
 	})
 })

@@ -13,6 +13,7 @@ import (
 	"github.com/litmuschaos/chaos-ci-lib/pkg/infrastructure"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/log"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/types"
+	"github.com/litmuschaos/chaos-ci-lib/pkg/workflow"
 	experiment "github.com/litmuschaos/litmus-go-sdk/pkg/apis/experiment"
 	models "github.com/litmuschaos/litmus/chaoscenter/graphql/server/graph/model"
 	. "github.com/onsi/ginkgo"
@@ -65,6 +66,15 @@ var _ = Describe("BDD of running node-io-stress experiment", func() {
 
 			// Validate that infrastructure ID is properly set
 			Expect(experimentsDetails.ConnectedInfraID).NotTo(BeEmpty(), "Setup failed: ConnectedInfraID is empty after connection attempt.")
+			
+			// Setup probe if configured to do so
+			if experimentsDetails.CreateProbe {
+				By("[PreChaos]: Setting up probe")
+				err = workflow.CreateProbe(&experimentsDetails, &clients)
+				Expect(err).To(BeNil(), "Failed to create probe, due to {%v}", err)
+				// Validate that probe was created successfully
+				Expect(experimentsDetails.CreatedProbeID).NotTo(BeEmpty(), "Probe creation failed: CreatedProbeID is empty")
+			}
 		})
 
 		It("Should run the node-io-stress experiment via SDK", func() {
@@ -85,11 +95,38 @@ var _ = Describe("BDD of running node-io-stress experiment", func() {
 			// 2. Create and Run Experiment via SDK
 			By("[SDK Prepare]: Creating and Running Chaos Experiment")
 			creds := clients.GetSDKCredentials()
-			runResponse, errRun := experiment.CreateExperiment(clients.LitmusProjectID, *experimentRequest, creds)
-			Expect(errRun).To(BeNil(), "Failed to create/run experiment via SDK: %v", errRun)
-			Expect(runResponse.Data.RunExperimentDetails.NotifyID).NotTo(BeEmpty(), "Experiment Run ID (NotifyID) should not be empty")
-			experimentsDetails.ExperimentRunID = runResponse.Data.RunExperimentDetails.NotifyID
-			klog.Infof("Experiment Run successfully triggered via SDK. Run ID: %s", experimentsDetails.ExperimentRunID)
+			_, err := experiment.CreateExperiment(clients.LitmusProjectID, *experimentRequest, creds)
+			Expect(err).To(BeNil(), "Failed to create/run experiment via SDK: %v", err)
+
+			By("[SDK Query]: Polling for experiment run to become available")
+			maxRetries := 10
+			found := false
+
+			for i := 0; i < maxRetries; i++ {
+				time.Sleep(3 * time.Second)
+				
+				runsList, err := experiment.GetExperimentRunsList(
+					clients.LitmusProjectID, 
+					models.ListExperimentRunRequest{
+						ExperimentIDs: []*string{&experimentID},
+					}, 
+					creds,
+				)
+				
+				klog.Infof("Attempt %d: Found %d experiment runs", i+1, 
+						len(runsList.ListExperimentRunDetails.ExperimentRuns))
+				
+				if err == nil && len(runsList.ListExperimentRunDetails.ExperimentRuns) > 0 {
+					experimentsDetails.ExperimentRunID = runsList.ListExperimentRunDetails.ExperimentRuns[0].ExperimentRunID
+					klog.Infof("Found experiment run ID: %s", experimentsDetails.ExperimentRunID)
+					found = true
+					break
+				}
+				
+				klog.Infof("Retrying after delay...")
+			}
+
+			Expect(found).To(BeTrue(), "No experiment runs found for experiment after %d retries", maxRetries)
 
 			// 3. Poll for Experiment Run Status
 			By("[SDK Status]: Polling for Experiment Run Status")
@@ -112,11 +149,11 @@ var _ = Describe("BDD of running node-io-stress experiment", func() {
 						klog.Errorf("Error fetching experiment run status for %s: %v", experimentsDetails.ExperimentRunID, errStatus)
 						continue
 					}
-					currentPhase := runStatus.Data.ExperimentRun.Phase
+					currentPhase := runStatus.ExperimentRun.Phase
 					klog.Infof("Experiment Run %s current phase: %s", experimentsDetails.ExperimentRunID, currentPhase)
 					finalPhases := []string{"Completed", "Completed_With_Error", "Failed", "Error", "Stopped", "Skipped", "Aborted", "Timeout", "Terminated"}
-					if pkg.ContainsString(finalPhases, currentPhase) {
-						finalPhase = currentPhase
+					if pkg.ContainsString(finalPhases, string(currentPhase)) {
+						finalPhase = string(currentPhase)
 						klog.Infof("Experiment Run %s reached final phase: %s", experimentsDetails.ExperimentRunID, currentPhase)
 						break pollLoop
 					}
@@ -133,6 +170,13 @@ var _ = Describe("BDD of running node-io-stress experiment", func() {
 
 		// Cleanup using AfterEach
 		AfterEach(func() {
+			// Clean up probe if one was created
+			if experimentsDetails.CreateProbe && experimentsDetails.CreatedProbeID != "" {
+				By("[CleanUp]: Cleaning up probe")
+				errCleanupProbe := workflow.CleanupProbe(&experimentsDetails, &clients)
+				Expect(errCleanupProbe).To(BeNil(), "Failed to clean up probe, due to {%v}", errCleanupProbe)
+			}
+			
 			// Disconnect infrastructure using the new module
 			By("[CleanUp]: Cleaning up infrastructure")
 			errDisconnect := infrastructure.DisconnectInfrastructure(&experimentsDetails, &clients)

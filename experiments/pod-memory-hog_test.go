@@ -65,6 +65,15 @@ var _ = Describe("BDD of running pod-memory-hog experiment", func() {
 			
 			// Validate that infrastructure ID is properly set
 			Expect(experimentsDetails.ConnectedInfraID).NotTo(BeEmpty(), "Setup failed: ConnectedInfraID is empty after connection attempt.")
+
+			// Setup probe if configured to do so
+			if experimentsDetails.CreateProbe {
+				By("[PreChaos]: Setting up probe")
+				err = workflow.CreateProbe(&experimentsDetails, &clients)
+				Expect(err).To(BeNil(), "Failed to create probe, due to {%v}", err)
+				// Validate that probe was created successfully
+				Expect(experimentsDetails.CreatedProbeID).NotTo(BeEmpty(), "Probe creation failed: CreatedProbeID is empty")
+			}
 		})
 
 		It("Should run the pod memory hog experiment via SDK", func() {
@@ -86,7 +95,7 @@ var _ = Describe("BDD of running pod-memory-hog experiment", func() {
             By("[SDK Prepare]: Creating and Running Chaos Experiment")
             creds := clients.GetSDKCredentials()
             _, err := experiment.CreateExperiment(clients.LitmusProjectID, *experimentRequest, creds)
-            Expect(err).To(BeNil(), "Failed to create experiment via SDK: %v", err)
+            Expect(err).To(BeNil(), "Failed to create/run experiment via SDK: %v", err)
 
             By("[SDK Query]: Polling for experiment run to become available")
             maxRetries := 10
@@ -160,6 +169,13 @@ var _ = Describe("BDD of running pod-memory-hog experiment", func() {
 
 		// Cleanup using AfterEach
 		AfterEach(func() {
+			// Clean up probe if one was created
+			if experimentsDetails.CreateProbe && experimentsDetails.CreatedProbeID != "" {
+				By("[CleanUp]: Cleaning up probe")
+				errCleanupProbe := workflow.CleanupProbe(&experimentsDetails, &clients)
+				Expect(errCleanupProbe).To(BeNil(), "Failed to clean up probe, due to {%v}", errCleanupProbe)
+			}
+			
 			// Disconnect infrastructure using the new module
 			By("[CleanUp]: Cleaning up infrastructure")
 			errDisconnect := infrastructure.DisconnectInfrastructure(&experimentsDetails, &clients)
