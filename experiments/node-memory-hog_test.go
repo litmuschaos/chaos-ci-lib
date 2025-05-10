@@ -244,18 +244,28 @@ func ConstructNodeMemoryHogExperimentRequest(details *types.ExperimentDetails, e
 					if components, compOk := exp["spec"].(map[string]interface{}); compOk {
 						if compEnv, envOk := components["components"].(map[string]interface{}); envOk {
 							if env, envListOk := compEnv["env"].([]interface{}); envListOk {
-								// Set node-memory-hog specific parameters
+								// Filter out NODE_LABEL if it exists
+								var filteredEnv []interface{}
 								for _, envVar := range env {
 									if envMap, isMap := envVar.(map[string]interface{}); isMap {
-										if envMap["name"] == "TOTAL_CHAOS_DURATION" {
+										if envMap["name"] == "NODE_LABEL" {
+											// Skip this entry to remove NODE_LABEL
+											continue
+										}
+										
+										// Set node-memory-hog specific parameters
+										if envMap["name"] == "MEMORY_CONSUMPTION" {
+											envMap["value"] = fmt.Sprintf("%d", details.MemoryConsumption)
+										} else if envMap["name"] == "TOTAL_CHAOS_DURATION" {
 											envMap["value"] = fmt.Sprintf("%d", details.ChaosDuration)
-										} else if envMap["name"] == "MEMORY_PERCENTAGE" {
-											envMap["value"] = fmt.Sprintf("%d", details.MemoryConsumptionPercentage)
 										} else if envMap["name"] == "NODES_AFFECTED_PERC" {
 											envMap["value"] = fmt.Sprintf("%d", details.NodesAffectedPerc)
 										}
+										filteredEnv = append(filteredEnv, envMap)
 									}
 								}
+								// Replace with filtered environment
+								compEnv["env"] = filteredEnv
 							}
 						}
 					}

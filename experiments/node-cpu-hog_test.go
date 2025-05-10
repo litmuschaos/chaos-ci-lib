@@ -244,9 +244,16 @@ func ConstructNodeCPUHogExperimentRequest(details *types.ExperimentDetails, expe
 					if components, compOk := exp["spec"].(map[string]interface{}); compOk {
 						if compEnv, envOk := components["components"].(map[string]interface{}); envOk {
 							if env, envListOk := compEnv["env"].([]interface{}); envListOk {
-								// Set node-cpu-hog specific parameters
+								// Filter out NODE_LABEL if it exists
+								var filteredEnv []interface{}
 								for _, envVar := range env {
 									if envMap, isMap := envVar.(map[string]interface{}); isMap {
+										if envMap["name"] == "NODE_LABEL" {
+											// Skip this entry to remove NODE_LABEL
+											continue
+										}
+										
+										// Set node-cpu-hog specific parameters
 										if envMap["name"] == "NODE_CPU_CORE" {
 											envMap["value"] = fmt.Sprintf("%d", details.NodeCPUCore)
 										} else if envMap["name"] == "TOTAL_CHAOS_DURATION" {
@@ -254,8 +261,11 @@ func ConstructNodeCPUHogExperimentRequest(details *types.ExperimentDetails, expe
 										} else if envMap["name"] == "NODES_AFFECTED_PERC" {
 											envMap["value"] = fmt.Sprintf("%d", details.NodesAffectedPerc)
 										}
+										filteredEnv = append(filteredEnv, envMap)
 									}
 								}
+								// Replace with filtered environment
+								compEnv["env"] = filteredEnv
 							}
 						}
 					}

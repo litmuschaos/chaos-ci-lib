@@ -244,20 +244,30 @@ func ConstructNodeIOStressExperimentRequest(details *types.ExperimentDetails, ex
 					if components, compOk := exp["spec"].(map[string]interface{}); compOk {
 						if compEnv, envOk := components["components"].(map[string]interface{}); envOk {
 							if env, envListOk := compEnv["env"].([]interface{}); envListOk {
-								// Set node-io-stress specific parameters
+								// Filter out NODE_LABEL if it exists
+								var filteredEnv []interface{}
 								for _, envVar := range env {
 									if envMap, isMap := envVar.(map[string]interface{}); isMap {
-										if envMap["name"] == "TOTAL_CHAOS_DURATION" {
-											envMap["value"] = fmt.Sprintf("%d", details.ChaosDuration)
-										} else if envMap["name"] == "FILESYSTEM_UTILIZATION_PERCENTAGE" {
+										if envMap["name"] == "NODE_LABEL" {
+											// Skip this entry to remove NODE_LABEL
+											continue
+										}
+										
+										// Set node-io-stress specific parameters
+										if envMap["name"] == "FILESYSTEM_UTILIZATION_PERCENTAGE" {
 											envMap["value"] = fmt.Sprintf("%d", details.FileSystemUtilizationPercentage)
-										} else if envMap["name"] == "FILESYSTEM_UTILIZATION_BYTES" {
-											envMap["value"] = fmt.Sprintf("%d", details.FilesystemUtilizationBytes)
+										} else if envMap["name"] == "TOTAL_CHAOS_DURATION" {
+											envMap["value"] = fmt.Sprintf("%d", details.ChaosDuration)
 										} else if envMap["name"] == "NODES_AFFECTED_PERC" {
 											envMap["value"] = fmt.Sprintf("%d", details.NodesAffectedPerc)
+										} else if envMap["name"] == "FILESYSTEM_UTILIZATION_BYTES" {
+											envMap["value"] = fmt.Sprintf("%d", details.FilesystemUtilizationBytes)
 										}
+										filteredEnv = append(filteredEnv, envMap)
 									}
 								}
+								// Replace with filtered environment
+								compEnv["env"] = filteredEnv
 							}
 						}
 					}

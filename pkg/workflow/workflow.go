@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -339,8 +340,21 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 		manifestStr = strings.ReplaceAll(manifestStr, "__SOCKET_PATH_VALUE__", config.SocketPath)
 		manifestStr = strings.ReplaceAll(manifestStr, "__DESTINATION_IPS_VALUE__", config.DestinationIPs)
 		manifestStr = strings.ReplaceAll(manifestStr, "__DESTINATION_HOSTS_VALUE__", config.DestinationHosts)
-		manifestStr = strings.ReplaceAll(manifestStr, "__NODE_LABEL_VALUE__", config.NodeLabel)
 		manifestStr = strings.ReplaceAll(manifestStr, "__SEQUENCE_VALUE__", config.Sequence)
+		
+		// Handle NODE_LABEL specially - if it's empty, remove the entire env var entry
+		if config.NodeLabel == "" {
+			// More aggressive pattern match for disk-fill
+			nodeLabelRegex1 := regexp.MustCompile(`\s*-\s+name:\s+NODE_LABEL\s+value:\s+["']?__NODE_LABEL_VALUE__["']?\s*`)
+			nodeLabelRegex2 := regexp.MustCompile(`\s*-\s+name:\s+["']?NODE_LABEL["']?\s+value:\s+.*\s*`)
+			nodeLabelRegex3 := regexp.MustCompile(`\s*name:\s+["']?NODE_LABEL["']?\s+value:\s+.*\s*`)
+			
+			manifestStr = nodeLabelRegex1.ReplaceAllString(manifestStr, "")
+			manifestStr = nodeLabelRegex2.ReplaceAllString(manifestStr, "")
+			manifestStr = nodeLabelRegex3.ReplaceAllString(manifestStr, "")
+		} else {
+			manifestStr = strings.ReplaceAll(manifestStr, "__NODE_LABEL_VALUE__", config.NodeLabel)
+		}
 		
 		// Replace experiment-specific network parameters
 		switch experimentType {
@@ -369,6 +383,20 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 			manifestStr = strings.ReplaceAll(manifestStr, "__FILL_PERCENTAGE_VALUE__", config.FillPercentage)
 			manifestStr = strings.ReplaceAll(manifestStr, "__DATA_BLOCK_SIZE_VALUE__", config.DataBlockSize)
 			manifestStr = strings.ReplaceAll(manifestStr, "__EPHEMERAL_STORAGE_MEBIBYTES_VALUE__", config.EphemeralStorageMebibytes)
+			
+			// Handle NODE_LABEL specially for DiskFill experiment - if it's empty, remove the entire env var entry
+			if config.NodeLabel == "" {
+				// More aggressive pattern match for disk-fill
+				nodeLabelRegex1 := regexp.MustCompile(`\s*-\s+name:\s+NODE_LABEL\s+value:\s+["']?__NODE_LABEL_VALUE__["']?\s*`)
+				nodeLabelRegex2 := regexp.MustCompile(`\s*-\s+name:\s+["']?NODE_LABEL["']?\s+value:\s+.*\s*`)
+				nodeLabelRegex3 := regexp.MustCompile(`\s*name:\s+["']?NODE_LABEL["']?\s+value:\s+.*\s*`)
+				
+				manifestStr = nodeLabelRegex1.ReplaceAllString(manifestStr, "")
+				manifestStr = nodeLabelRegex2.ReplaceAllString(manifestStr, "")
+				manifestStr = nodeLabelRegex3.ReplaceAllString(manifestStr, "")
+			} else {
+				manifestStr = strings.ReplaceAll(manifestStr, "__NODE_LABEL_VALUE__", config.NodeLabel)
+			}
 		}
 	}
 	
@@ -1079,8 +1107,6 @@ spec:
       value: '__CHAOS_DURATION_VALUE__'
     - name: PODS_AFFECTED_PERC
       value: '__PODS_AFFECTED_PERC_VALUE__'
-    - name: NODE_LABEL
-      value: '__NODE_LABEL_VALUE__'
     - name: DEFAULT_HEALTH_CHECK
       value: '__DEFAULT_HEALTH_CHECK_VALUE__'
     - name: LIB_IMAGE
@@ -1141,8 +1167,6 @@ spec:
       value: '__TARGET_PODS_VALUE__'
     - name: EPHEMERAL_STORAGE_MEBIBYTES
       value: '__EPHEMERAL_STORAGE_MEBIBYTES_VALUE__'
-    - name: NODE_LABEL
-      value: '__NODE_LABEL_VALUE__'
     - name: PODS_AFFECTED_PERC
       value: '__PODS_AFFECTED_PERC_VALUE__'
     - name: DEFAULT_HEALTH_CHECK
@@ -1553,8 +1577,6 @@ spec:
               value: "__CHAOS_DURATION_VALUE__"
             - name: PODS_AFFECTED_PERC
               value: "__PODS_AFFECTED_PERC_VALUE__"
-            - name: NODE_LABEL
-              value: "__NODE_LABEL_VALUE__"
             - name: DEFAULT_HEALTH_CHECK
               value: "__DEFAULT_HEALTH_CHECK_VALUE__"
             - name: LIB_IMAGE
@@ -1597,8 +1619,6 @@ spec:
               value: "__TARGET_PODS_VALUE__"
             - name: EPHEMERAL_STORAGE_MEBIBYTES
               value: "__EPHEMERAL_STORAGE_MEBIBYTES_VALUE__"
-            - name: NODE_LABEL
-              value: "__NODE_LABEL_VALUE__"
             - name: PODS_AFFECTED_PERC
               value: "__PODS_AFFECTED_PERC_VALUE__"
             - name: DEFAULT_HEALTH_CHECK
