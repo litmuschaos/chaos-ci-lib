@@ -29,7 +29,7 @@ type ClientSets struct {
 }
 
 // GenerateClientSetFromSDK will generate the Litmus SDK client
-func (clientSets *ClientSets) GenerateClientSetFromSDK() error {
+func GenerateClientSetFromSDK() (litmusSDK.Client, error) {
 	// Initialize Litmus SDK client
 	endpoint := os.Getenv("LITMUS_ENDPOINT")
 	username := os.Getenv("LITMUS_USERNAME")
@@ -37,7 +37,7 @@ func (clientSets *ClientSets) GenerateClientSetFromSDK() error {
 	projectID := os.Getenv("LITMUS_PROJECT_ID")
 	
 	if endpoint == "" || username == "" || password == "" || projectID == "" {
-		return errors.New("LITMUS_ENDPOINT, LITMUS_USERNAME, LITMUS_PASSWORD, and LITMUS_PROJECT_ID environment variables must be set")
+		return nil, errors.New("LITMUS_ENDPOINT, LITMUS_USERNAME, LITMUS_PASSWORD, and LITMUS_PROJECT_ID environment variables must be set")
 	}
 	
 	// Initialize Litmus SDK client
@@ -45,34 +45,27 @@ func (clientSets *ClientSets) GenerateClientSetFromSDK() error {
 		Endpoint: endpoint,
 		Username: username,
 		Password: password,
+		ProjectID: projectID,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "Unable to create Litmus SDK client: %v", err)
+		return nil, errors.Wrapf(err, "Unable to create Litmus SDK client: %v", err)
 	}
-	// Store client and credentials
-	clientSets.SDKClient = sdkClient
-	clientSets.LitmusEndpoint = endpoint
-	clientSets.LitmusUsername = username 
-	clientSets.LitmusPassword = password 
-	clientSets.LitmusProjectID = projectID
 
 	// Get the token using the Auth() method
     token := sdkClient.Auth().GetToken()
     if token != "" {
-        clientSets.LitmusToken = token
         klog.Infof("Successfully retrieved token from SDK client")
     } else {
         klog.Warningf("Could not retrieve token from SDK client Auth().GetToken()")
-        return errors.New("Failed to retrieve token from SDK client")
+        return nil, errors.New("Failed to retrieve token from SDK client")
     }
-
-	return nil
+	return sdkClient, nil
 }
 
 // Helper method to construct Credentials struct for SDK calls
 func (clientSets *ClientSets) GetSDKCredentials() types.Credentials {
 	return types.Credentials{
-		ServerEndpoint: clientSets.LitmusEndpoint,
+		Endpoint: clientSets.LitmusEndpoint,
 		Token:          clientSets.LitmusToken,
 		Username:       clientSets.LitmusUsername, 
 		ProjectID:      clientSets.LitmusProjectID,

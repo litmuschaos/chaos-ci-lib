@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/litmuschaos/chaos-ci-lib/pkg/environment"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/types"
 	probe "github.com/litmuschaos/litmus-go-sdk/pkg/apis/probe"
+	"github.com/litmuschaos/litmus-go-sdk/pkg/sdk"
 	models "github.com/litmuschaos/litmus/chaoscenter/graphql/server/graph/model"
 )
 
@@ -67,6 +67,11 @@ type ExperimentConfig struct {
 	
 	// Memory hog specific parameters
 	MemoryConsumption string
+	
+	// Node memory hog specific parameters
+	MemoryConsumptionPercentage  string
+	MemoryConsumptionMebibytes   string
+	NumberOfWorkers              string
 	
 	// Network chaos common parameters
 	NetworkInterface  string
@@ -215,7 +220,10 @@ func GetDefaultExperimentConfig(experimentType ExperimentType) ExperimentConfig 
 		
 	case NodeMemoryHog:
 		config.ChaosDuration = "60"
-		config.MemoryConsumption = "500"
+		config.MemoryConsumptionPercentage = ""
+		config.MemoryConsumptionMebibytes = "500"  // Set a default value
+		config.NumberOfWorkers = "1"
+		config.NodeLabel = ""  // Explicitly set to empty
 		config.Description = "Node memory hog chaos experiment execution" 
 		config.Tags = []string{"node-memory-hog", "chaos", "litmus"}
 		
@@ -430,6 +438,20 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 				manifestStr = nodeLabelRegex1.ReplaceAllString(manifestStr, "")
 				manifestStr = nodeLabelRegex2.ReplaceAllString(manifestStr, "")
 				manifestStr = nodeLabelRegex3.ReplaceAllString(manifestStr, "")
+			} else {
+				manifestStr = strings.ReplaceAll(manifestStr, "__NODE_LABEL_VALUE__", config.NodeLabel)
+			}
+		case NodeMemoryHog:
+			// Replace memory consumption values
+			manifestStr = strings.ReplaceAll(manifestStr, "__MEMORY_CONSUMPTION_PERCENTAGE_VALUE__", config.MemoryConsumptionPercentage)
+			manifestStr = strings.ReplaceAll(manifestStr, "__MEMORY_CONSUMPTION_MEBIBYTES_VALUE__", config.MemoryConsumptionMebibytes)
+			manifestStr = strings.ReplaceAll(manifestStr, "__NUMBER_OF_WORKERS_VALUE__", config.NumberOfWorkers)
+			manifestStr = strings.ReplaceAll(manifestStr, "__TARGET_NODES_VALUE__", config.TargetPods)
+			manifestStr = strings.ReplaceAll(manifestStr, "__NODES_AFFECTED_PERC_VALUE__", config.PodsAffectedPerc)
+			
+			// Handle NODE_LABEL specially - if it's empty, replace with empty string
+			if config.NodeLabel == "" {
+				manifestStr = strings.ReplaceAll(manifestStr, "__NODE_LABEL_VALUE__", "")
 			} else {
 				manifestStr = strings.ReplaceAll(manifestStr, "__NODE_LABEL_VALUE__", config.NodeLabel)
 			}
@@ -1280,7 +1302,7 @@ spec:
 		return `apiVersion: litmuschaos.io/v1alpha1
 description:
   message: |
-    Injects memory consumption on node
+    Give a memory hog on a node belonging to a deployment
 kind: ChaosExperiment
 metadata:
   name: node-memory-hog
@@ -1317,20 +1339,24 @@ spec:
       value: '__CHAOS_DURATION_VALUE__'
     - name: RAMP_TIME
       value: '__RAMP_TIME_VALUE__'
-    - name: MEMORY_CONSUMPTION
-      value: '__MEMORY_CONSUMPTION_VALUE__'
-    - name: NODES_AFFECTED_PERC
-      value: '__PODS_AFFECTED_PERC_VALUE__'
+    - name: MEMORY_CONSUMPTION_PERCENTAGE
+      value: '__MEMORY_CONSUMPTION_PERCENTAGE_VALUE__'
+    - name: MEMORY_CONSUMPTION_MEBIBYTES
+      value: '__MEMORY_CONSUMPTION_MEBIBYTES_VALUE__'
+    - name: NUMBER_OF_WORKERS
+      value: '__NUMBER_OF_WORKERS_VALUE__'
     - name: TARGET_NODES
-      value: '__TARGET_PODS_VALUE__'
+      value: '__TARGET_NODES_VALUE__'
+    - name: NODE_LABEL
+      value: '__NODE_LABEL_VALUE__'
+    - name: NODES_AFFECTED_PERC
+      value: '__NODES_AFFECTED_PERC_VALUE__'
     - name: DEFAULT_HEALTH_CHECK
       value: '__DEFAULT_HEALTH_CHECK_VALUE__'
     - name: LIB_IMAGE
-      value: 'litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0'
+      value: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0"
     - name: SEQUENCE
-      value: 'parallel'
-    labels:
-      name: node-memory-hog`
+      value: "parallel"`
       
 	case NodeIOStress:
 		return `apiVersion: litmuschaos.io/v1alpha1
@@ -1897,14 +1923,22 @@ spec:
               value: "__CHAOS_DURATION_VALUE__"
             - name: RAMP_TIME
               value: "__RAMP_TIME_VALUE__"
-            - name: MEMORY_CONSUMPTION
-              value: "__MEMORY_CONSUMPTION_VALUE__"
-            - name: NODES_AFFECTED_PERC
-              value: "__PODS_AFFECTED_PERC_VALUE__"
+            - name: MEMORY_CONSUMPTION_PERCENTAGE
+              value: "__MEMORY_CONSUMPTION_PERCENTAGE_VALUE__"
+            - name: MEMORY_CONSUMPTION_MEBIBYTES
+              value: "__MEMORY_CONSUMPTION_MEBIBYTES_VALUE__"
+            - name: NUMBER_OF_WORKERS
+              value: "__NUMBER_OF_WORKERS_VALUE__"
             - name: TARGET_NODES
-              value: "__TARGET_PODS_VALUE__"
+              value: "__TARGET_NODES_VALUE__"
+            - name: NODE_LABEL
+              value: "__NODE_LABEL_VALUE__"
+            - name: NODES_AFFECTED_PERC
+              value: "__NODES_AFFECTED_PERC_VALUE__"
             - name: DEFAULT_HEALTH_CHECK
               value: "__DEFAULT_HEALTH_CHECK_VALUE__"
+            - name: LIB_IMAGE
+              value: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0"
             - name: SEQUENCE
               value: "parallel"`
 			  
@@ -2064,23 +2098,15 @@ func applyProbeConfigFromEnv(config *ExperimentConfig) {
 	}
 }
 
-// Helper function to create an int pointer
-func intPtr(i int) *int {
-	return &i
-}
-
 // CreateProbe creates a probe using the experiment details
-func CreateProbe(details *types.ExperimentDetails, clients *environment.ClientSets) error {
+func CreateProbe(details *types.ExperimentDetails, sdkClient sdk.Client, litmusProjectID string) error {
 	if !details.CreateProbe {
 		log.Println("Skipping probe creation as LITMUS_CREATE_PROBE is not set to true")
 		return nil
 	}
 
 	log.Printf("Creating a new probe with name: %s", details.ProbeName)
-	
-	// Create credentials using the client
-	credentials := clients.GetSDKCredentials()
-	
+
 	// Setup defaults for HTTP probe
 	trueBool := true
 	desc := fmt.Sprintf("HTTP probe for %s", details.ProbeName)
@@ -2134,30 +2160,14 @@ func CreateProbe(details *types.ExperimentDetails, clients *environment.ClientSe
 	}
 	
 	// Create probe
-	createdProbe, err := probe.CreateProbe(probeReq, credentials.ProjectID, credentials)
+	createdProbe, err := sdkClient.Probes().Create(probeReq, litmusProjectID)
 	if err != nil {
 		log.Printf("Failed to create probe: %v", err)
 		return err
 	}
-	
+
 	log.Printf("Successfully created probe: %s", createdProbe.Name)
 	
-	// Store probe ID for later use - the probe might not have an ID field,
-	// so we'll just store the name for now
-	details.CreatedProbeID = createdProbe.Name
-	
-	return nil
-}
-
-// CleanupProbe deletes a probe created by CreateProbe
-func CleanupProbe(details *types.ExperimentDetails, clients *environment.ClientSets) error {
-	if !details.CreateProbe || details.CreatedProbeID == "" {
-		log.Println("Skipping probe cleanup as no probe was created or probe ID is missing")
-		return nil
-	}
-
-	log.Printf("Note: Automatic probe cleanup is not currently supported in the SDK")
-	log.Printf("To manually delete the probe %s, use the Litmus Portal UI", details.CreatedProbeID)
-	
+  details.CreatedProbeID = createdProbe.Name
 	return nil
 }
