@@ -372,19 +372,30 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 		manifestStr = strings.ReplaceAll(manifestStr, "__DESTINATION_HOSTS_VALUE__", config.DestinationHosts)
 		manifestStr = strings.ReplaceAll(manifestStr, "__SEQUENCE_VALUE__", config.Sequence)
 		
-		// Handle NODE_LABEL specially - if it's empty, remove the entire env var entry
-		if config.NodeLabel == "" {
-			// More aggressive pattern match for disk-fill
-			nodeLabelRegex1 := regexp.MustCompile(`\s*-\s+name:\s+NODE_LABEL\s+value:\s+["']?__NODE_LABEL_VALUE__["']?\s*`)
-			nodeLabelRegex2 := regexp.MustCompile(`\s*-\s+name:\s+["']?NODE_LABEL["']?\s+value:\s+.*\s*`)
-			nodeLabelRegex3 := regexp.MustCompile(`\s*name:\s+["']?NODE_LABEL["']?\s+value:\s+.*\s*`)
-			
-			manifestStr = nodeLabelRegex1.ReplaceAllString(manifestStr, "")
-			manifestStr = nodeLabelRegex2.ReplaceAllString(manifestStr, "")
-			manifestStr = nodeLabelRegex3.ReplaceAllString(manifestStr, "")
-		} else {
-			manifestStr = strings.ReplaceAll(manifestStr, "__NODE_LABEL_VALUE__", config.NodeLabel)
-		}
+		// For network tests, completely remove NODE_LABEL environment variable
+		nodeLabelRegex1 := regexp.MustCompile(`(?m)^\s*-\s+name:\s+NODE_LABEL\s+value:\s+.*$`)
+		nodeLabelRegex2 := regexp.MustCompile(`(?m)^\s*-\s+name:\s+["']?NODE_LABEL["']?\s+value:\s+.*$`)
+		nodeLabelRegex3 := regexp.MustCompile(`(?m)^\s*name:\s+["']?NODE_LABEL["']?\s+value:\s+.*$`)
+		
+		manifestStr = nodeLabelRegex1.ReplaceAllString(manifestStr, "")
+		manifestStr = nodeLabelRegex2.ReplaceAllString(manifestStr, "")
+		manifestStr = nodeLabelRegex3.ReplaceAllString(manifestStr, "")
+		
+		// Directly replace any target with nodeLabel
+		targetNodeLabelRegex1 := regexp.MustCompile(`target:\s*{nodeLabel:\s*[^}]*}`)
+		targetNodeLabelRegex2 := regexp.MustCompile(`"target":\s*"{nodeLabel:\s*[^}]*}"`)
+		targetNodeLabelRegex3 := regexp.MustCompile(`"target":\s*"?{nodeLabel:[^}]*}"?`)
+		targetNodeLabelRegex4 := regexp.MustCompile(`target:[^{]*{nodeLabel:[^}]*}`)
+		
+		manifestStr = targetNodeLabelRegex1.ReplaceAllString(manifestStr, "target: {}")
+		manifestStr = targetNodeLabelRegex2.ReplaceAllString(manifestStr, "\"target\": \"{}\"")
+		manifestStr = targetNodeLabelRegex3.ReplaceAllString(manifestStr, "\"target\": \"{}\"")
+		manifestStr = targetNodeLabelRegex4.ReplaceAllString(manifestStr, "target: {}")
+		
+		// Replace specific __NODE_LABEL_VALUE__ directly
+		manifestStr = strings.ReplaceAll(manifestStr, "__NODE_LABEL_VALUE__", "")
+		manifestStr = strings.ReplaceAll(manifestStr, "nodeLabel: ", "")
+		manifestStr = strings.ReplaceAll(manifestStr, "nodeLabel:", "")
 		
 		// Replace experiment-specific network parameters
 		switch experimentType {
@@ -424,6 +435,17 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 				manifestStr = nodeLabelRegex1.ReplaceAllString(manifestStr, "")
 				manifestStr = nodeLabelRegex2.ReplaceAllString(manifestStr, "")
 				manifestStr = nodeLabelRegex3.ReplaceAllString(manifestStr, "")
+				
+				// For yaml target field with nodeLabel - matching more formats
+				targetNodeLabelRegex1 := regexp.MustCompile(`target:\s*{nodeLabel:\s*__NODE_LABEL_VALUE__}`)
+				targetNodeLabelRegex2 := regexp.MustCompile(`"target":\s*"{nodeLabel:\s*__NODE_LABEL_VALUE__}"`)
+				targetNodeLabelRegex3 := regexp.MustCompile(`target:\s*["{]\s*nodeLabel:\s*__NODE_LABEL_VALUE__\s*[}"]`)
+				targetNodeLabelRegex4 := regexp.MustCompile(`"target":\s*"?{nodeLabel:\s*__NODE_LABEL_VALUE__}"?`)
+				
+				manifestStr = targetNodeLabelRegex1.ReplaceAllString(manifestStr, "target: {}")
+				manifestStr = targetNodeLabelRegex2.ReplaceAllString(manifestStr, "\"target\": \"{}\"")
+				manifestStr = targetNodeLabelRegex3.ReplaceAllString(manifestStr, "target: {}")
+				manifestStr = targetNodeLabelRegex4.ReplaceAllString(manifestStr, "\"target\": \"{}\"")
 			} else {
 				manifestStr = strings.ReplaceAll(manifestStr, "__NODE_LABEL_VALUE__", config.NodeLabel)
 			}
@@ -438,6 +460,17 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 				manifestStr = nodeLabelRegex1.ReplaceAllString(manifestStr, "")
 				manifestStr = nodeLabelRegex2.ReplaceAllString(manifestStr, "")
 				manifestStr = nodeLabelRegex3.ReplaceAllString(manifestStr, "")
+				
+				// For yaml target field with nodeLabel - matching more formats
+				targetNodeLabelRegex1 := regexp.MustCompile(`target:\s*{nodeLabel:\s*__NODE_LABEL_VALUE__}`)
+				targetNodeLabelRegex2 := regexp.MustCompile(`"target":\s*"{nodeLabel:\s*__NODE_LABEL_VALUE__}"`)
+				targetNodeLabelRegex3 := regexp.MustCompile(`target:\s*["{]\s*nodeLabel:\s*__NODE_LABEL_VALUE__\s*[}"]`)
+				targetNodeLabelRegex4 := regexp.MustCompile(`"target":\s*"?{nodeLabel:\s*__NODE_LABEL_VALUE__}"?`)
+				
+				manifestStr = targetNodeLabelRegex1.ReplaceAllString(manifestStr, "target: {}")
+				manifestStr = targetNodeLabelRegex2.ReplaceAllString(manifestStr, "\"target\": \"{}\"")
+				manifestStr = targetNodeLabelRegex3.ReplaceAllString(manifestStr, "target: {}")
+				manifestStr = targetNodeLabelRegex4.ReplaceAllString(manifestStr, "\"target\": \"{}\"")
 			} else {
 				manifestStr = strings.ReplaceAll(manifestStr, "__NODE_LABEL_VALUE__", config.NodeLabel)
 			}
@@ -451,7 +484,25 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 			
 			// Handle NODE_LABEL specially - if it's empty, replace with empty string
 			if config.NodeLabel == "" {
-				manifestStr = strings.ReplaceAll(manifestStr, "__NODE_LABEL_VALUE__", "")
+				// Remove NODE_LABEL environment variable if empty
+				nodeLabelRegex1 := regexp.MustCompile(`\s*-\s+name:\s+NODE_LABEL\s+value:\s+["']?__NODE_LABEL_VALUE__["']?\s*`)
+				nodeLabelRegex2 := regexp.MustCompile(`\s*-\s+name:\s+["']?NODE_LABEL["']?\s+value:\s+.*\s*`)
+				nodeLabelRegex3 := regexp.MustCompile(`\s*name:\s+["']?NODE_LABEL["']?\s+value:\s+.*\s*`)
+				
+				manifestStr = nodeLabelRegex1.ReplaceAllString(manifestStr, "")
+				manifestStr = nodeLabelRegex2.ReplaceAllString(manifestStr, "")
+				manifestStr = nodeLabelRegex3.ReplaceAllString(manifestStr, "")
+				
+				// For yaml target field with nodeLabel - matching more formats
+				targetNodeLabelRegex1 := regexp.MustCompile(`target:\s*{nodeLabel:\s*__NODE_LABEL_VALUE__}`)
+				targetNodeLabelRegex2 := regexp.MustCompile(`"target":\s*"{nodeLabel:\s*__NODE_LABEL_VALUE__}"`)
+				targetNodeLabelRegex3 := regexp.MustCompile(`target:\s*["{]\s*nodeLabel:\s*__NODE_LABEL_VALUE__\s*[}"]`)
+				targetNodeLabelRegex4 := regexp.MustCompile(`"target":\s*"?{nodeLabel:\s*__NODE_LABEL_VALUE__}"?`)
+				
+				manifestStr = targetNodeLabelRegex1.ReplaceAllString(manifestStr, "target: {}")
+				manifestStr = targetNodeLabelRegex2.ReplaceAllString(manifestStr, "\"target\": \"{}\"")
+				manifestStr = targetNodeLabelRegex3.ReplaceAllString(manifestStr, "target: {}")
+				manifestStr = targetNodeLabelRegex4.ReplaceAllString(manifestStr, "\"target\": \"{}\"")
 			} else {
 				manifestStr = strings.ReplaceAll(manifestStr, "__NODE_LABEL_VALUE__", config.NodeLabel)
 			}
