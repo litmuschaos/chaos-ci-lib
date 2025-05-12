@@ -5,9 +5,11 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/litmuschaos/chaos-ci-lib/pkg"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/types"
 	"github.com/litmuschaos/litmus-go-sdk/pkg/sdk"
 	sdkTypes "github.com/litmuschaos/litmus-go-sdk/pkg/types"
+	"github.com/litmuschaos/litmus/chaoscenter/graphql/server/graph/model"
 	"k8s.io/klog"
 )
 
@@ -37,10 +39,71 @@ func SetupInfrastructure(experimentsDetails *types.ExperimentDetails, sdkClient 
 	return ConnectInfrastructure(experimentsDetails, sdkClient)
 }
 
+// SetupEnvironment checks if we should use an existing environment or create a new one
+// It returns the environmentID to be used for infrastructure creation
+func SetupEnvironment(experimentsDetails *types.ExperimentDetails, sdkClient sdk.Client) (string, error) {
+	// Check if we should use an existing environment
+	useExistingEnv, _ := strconv.ParseBool(os.Getenv("USE_EXISTING_ENV"))
+	if useExistingEnv {
+		envID := os.Getenv("EXISTING_ENV_ID")
+		if envID == "" {
+			return "", errors.New("USE_EXISTING_ENV is true but EXISTING_ENV_ID is not provided")
+		}
+		klog.Infof("Using existing environment with ID: %s", envID)
+		return envID, nil
+	}
+
+	// Create a new environment
+	envName := os.Getenv("ENV_NAME")
+	if envName == "" {
+		envName = "chaos-ci-env" // Default environment name
+	}
+	
+	// Configure environment properties 
+	// Valid values for environment type are "PROD" and "NON_PROD"
+	envType := os.Getenv("ENV_TYPE")
+	if envType == "" || (envType != "PROD" && envType != "NON_PROD") {
+		envType = "NON_PROD" // Default environment type
+	}
+	
+	envDescription := os.Getenv("ENV_DESCRIPTION")
+	if envDescription == "" {
+		envDescription = "CI Test Environment"
+	}
+
+	environmentID := pkg.GenerateEnvironmentID()
+	
+	// Create the environment request with the correct environment type
+	createEnvironmentRequest := model.CreateEnvironmentRequest{
+		Name: envName,
+		Type: model.EnvironmentType(envType),
+		Description: &envDescription,
+		EnvironmentID: environmentID,
+	}
+	
+	// Create the environment using SDK
+	klog.Infof("Creating new environment: %s with type: %s", envName, envType)
+	_, err := sdkClient.Environments().Create(envName, createEnvironmentRequest)
+	if err != nil {
+		return "", err
+	}
+	
+	klog.Infof("Successfully created environment with ID: %s", environmentID)
+	return environmentID, nil
+}
+
 // ConnectInfrastructure connects to a new infrastructure via the SDK
 func ConnectInfrastructure(experimentsDetails *types.ExperimentDetails, sdkClient sdk.Client) error {
 	klog.Infof("Attempting to connect infrastructure: %s", experimentsDetails.InfraName)
+
+	// Setup environment (create new or use existing)
+	environmentID, err := SetupEnvironment(experimentsDetails, sdkClient)
+	if err != nil {
+		return err
+	}
 	
+	// Use the obtained environmentID
+	experimentsDetails.InfraEnvironmentID = environmentID
 
 	// Prepare infrastructure configuration
 	sdkConfig := sdkTypes.Infra{
@@ -71,10 +134,6 @@ func ConnectInfrastructure(experimentsDetails *types.ExperimentDetails, sdkClien
 	experimentsDetails.ConnectedInfraID = infraID
 	klog.Infof("Successfully connected infrastructure via SDK. Stored ID: %s", experimentsDetails.ConnectedInfraID)
 
-
-	experimentsDetails.ConnectedInfraID = infraID
-	klog.Infof("Successfully connected infrastructure via SDK. Stored ID: %s", experimentsDetails.ConnectedInfraID)
-	
 	return nil
 }
 

@@ -69,3 +69,8 @@ func GenerateExperimentID() (string) {
 	experimentID := uuid.New().String()[:8]
 	return experimentID
 }
+
+// GenerateEnvironmentID creates a unique environment ID
+func GenerateEnvironmentID() string {
+	return uuid.New().String()[:8]
+}
