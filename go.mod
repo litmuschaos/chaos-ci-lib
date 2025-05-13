@@ -11,7 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/litmuschaos/chaos-operator v0.0.0-20240601063404-e96a7ee7f1f7
 	github.com/litmuschaos/litmus-go v0.0.0-20210705063441-babf0c4aa57d
-	github.com/litmuschaos/litmus-go-sdk v0.0.0-20250421061757-b4c425a3b0d1
+	github.com/litmuschaos/litmus-go-sdk v0.0.0-20250513045254-3a81cc911979
 	github.com/litmuschaos/litmus/chaoscenter/graphql/server v0.0.0-20250317093827-172c4b9ffb24
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.34.1
@@ -81,7 +81,6 @@ replace (
 	github.com/go-openapi/spec => github.com/go-openapi/spec v0.19.5
 	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.3.1
 	github.com/litmuschaos/chaos-operator => github.com/litmuschaos/chaos-operator v0.0.0-20210610071657-a58dbd939e73
-	github.com/litmuschaos/litmus-go-sdk => ../litmus-go-sdk //TO remove after litmus-go-sdk is published
 	k8s.io/api => k8s.io/api v0.0.0-20191016110408-35e52d86657a
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20191016113550-5357c4baaf65
 	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20191004115801-a2eda9f80ab8

@@ -539,6 +539,8 @@ github.com/litmuschaos/chaos-operator v0.0.0-20210610071657-a58dbd939e73/go.mod 
 github.com/litmuschaos/elves v0.0.0-20201107015738-552d74669e3c/go.mod h1:DsbHGNUq/78NZozWVVI9Q6eBei4I+JjlkkD5aibJ3MQ=
 github.com/litmuschaos/litmus-go v0.0.0-20210705063441-babf0c4aa57d h1:QCIy9qxYtAQ6XoI5o935yKbulaVswl6X5lGQire2bwQ=
 github.com/litmuschaos/litmus-go v0.0.0-20210705063441-babf0c4aa57d/go.mod h1:MNO+1u4jBPjLtFO56bckIv87EhwTkppJxDf8+6PbLRY=
+github.com/litmuschaos/litmus-go-sdk v0.0.0-20250513045254-3a81cc911979 h1:hx4q3qS1B2eXeQoO76GcVe4qNL7XHGMEFrdhv6+hQ70=
+github.com/litmuschaos/litmus-go-sdk v0.0.0-20250513045254-3a81cc911979/go.mod h1:f93Jf8U6NTm8WtQKo0c/koK/9EbIJgbkJOkCQxpR4j0=
 github.com/litmuschaos/litmus/chaoscenter/graphql/server v0.0.0-20250317093827-172c4b9ffb24 h1:y5XvMZkwPBjUlbjheYNHX8XkHdf6VBrZ6QKxmLm0dCQ=
 github.com/litmuschaos/litmus/chaoscenter/graphql/server v0.0.0-20250317093827-172c4b9ffb24/go.mod h1:/5E4at+TglA7QAUlMVzKmCyj03pohORGCDSKeIZmXyA=
 github.com/logrusorgru/aurora v0.0.0-20181002194514-a7b3b318ed4e/go.mod h1:7rIyQOR62GCctdiQpZ/zOJlFyk6y+94wXzv6RNZgaR4=
