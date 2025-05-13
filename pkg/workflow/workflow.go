@@ -220,8 +220,8 @@ func GetDefaultExperimentConfig(experimentType ExperimentType) ExperimentConfig 
 		
 	case NodeMemoryHog:
 		config.ChaosDuration = "60"
-		config.MemoryConsumptionPercentage = ""
-		config.MemoryConsumptionMebibytes = "500"  // Set a default value
+		config.MemoryConsumptionPercentage = "0"
+		config.MemoryConsumptionMebibytes = "0"  
 		config.NumberOfWorkers = "1"
 		config.NodeLabel = ""  // Explicitly set to empty
 		config.Description = "Node memory hog chaos experiment execution" 
@@ -1301,9 +1301,6 @@ metadata:
   name: node-cpu-hog
   labels:
     name: node-cpu-hog
-    app.kubernetes.io/part-of: litmus
-    app.kubernetes.io/component: chaosexperiment
-    app.kubernetes.io/version: 3.16.0
 spec:
   definition:
     scope: Cluster
@@ -1359,9 +1356,6 @@ metadata:
   name: node-memory-hog
   labels:
     name: node-memory-hog
-    app.kubernetes.io/part-of: litmus
-    app.kubernetes.io/component: chaosexperiment
-    app.kubernetes.io/version: 3.16.0
 spec:
   definition:
     scope: Cluster
@@ -1378,6 +1372,69 @@ spec:
           - patch
           - update
           - deletecollection
+      - apiGroups:
+          - ""
+        resources:
+          - events
+        verbs:
+          - create
+          - get
+          - list
+          - patch
+          - update
+      - apiGroups:
+          - ""
+        resources:
+          - configmaps
+        verbs:
+          - get
+          - list
+      - apiGroups:
+          - ""
+        resources:
+          - pods/log
+        verbs:
+          - get
+          - list
+          - watch
+      - apiGroups:
+          - ""
+        resources:
+          - pods/exec
+        verbs:
+          - get
+          - list
+          - create
+      - apiGroups:
+          - batch
+        resources:
+          - jobs
+        verbs:
+          - create
+          - list
+          - get
+          - delete
+          - deletecollection
+      - apiGroups:
+          - litmuschaos.io
+        resources:
+          - chaosengines
+          - chaosexperiments
+          - chaosresults
+        verbs:
+          - create
+          - list
+          - get
+          - patch
+          - update
+          - delete
+      - apiGroups:
+          - ""
+        resources:
+          - nodes
+        verbs:
+          - get
+          - list
     image: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0"
     imagePullPolicy: Always
     args:
@@ -1398,8 +1455,6 @@ spec:
       value: '__NUMBER_OF_WORKERS_VALUE__'
     - name: TARGET_NODES
       value: '__TARGET_NODES_VALUE__'
-    - name: NODE_LABEL
-      value: '__NODE_LABEL_VALUE__'
     - name: NODES_AFFECTED_PERC
       value: '__NODES_AFFECTED_PERC_VALUE__'
     - name: DEFAULT_HEALTH_CHECK
@@ -1407,7 +1462,9 @@ spec:
     - name: LIB_IMAGE
       value: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0"
     - name: SEQUENCE
-      value: "parallel"`
+      value: "parallel"
+    labels:
+      name: node-memory-hog`
       
 	case NodeIOStress:
 		return `apiVersion: litmuschaos.io/v1alpha1
@@ -1419,9 +1476,6 @@ metadata:
   name: node-io-stress
   labels:
     name: node-io-stress
-    app.kubernetes.io/part-of: litmus
-    app.kubernetes.io/component: chaosexperiment
-    app.kubernetes.io/version: 3.16.0
 spec:
   definition:
     scope: Cluster
@@ -1982,8 +2036,6 @@ spec:
               value: "__NUMBER_OF_WORKERS_VALUE__"
             - name: TARGET_NODES
               value: "__TARGET_NODES_VALUE__"
-            - name: NODE_LABEL
-              value: "__NODE_LABEL_VALUE__"
             - name: NODES_AFFECTED_PERC
               value: "__NODES_AFFECTED_PERC_VALUE__"
             - name: DEFAULT_HEALTH_CHECK
