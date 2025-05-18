@@ -20,6 +20,11 @@ func SetupInfrastructure(experimentsDetails *types.ExperimentDetails, sdkClient 
 	installInfra, _ := strconv.ParseBool(os.Getenv("INSTALL_INFRA"))
 	if !installInfra {
 		klog.Info("INSTALL_INFRA is set to false, skipping infrastructure setup")
+		// Handle case where we're using existing infrastructure but not installing
+		if experimentsDetails.ConnectedInfraID == "" && experimentsDetails.UseExistingInfra && experimentsDetails.ExistingInfraID != "" {
+			experimentsDetails.ConnectedInfraID = experimentsDetails.ExistingInfraID
+			klog.Infof("Manually set ConnectedInfraID to %s from ExistingInfraID", experimentsDetails.ConnectedInfraID)
+		}
 		return nil
 	}
 

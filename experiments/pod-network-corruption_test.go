@@ -51,10 +51,6 @@ var _ = Describe("BDD of running pod-network-corruption experiment", func() {
 			// Setup infrastructure 
 			By("[PreChaos]: Setting up infrastructure")
 			err = infrastructure.SetupInfrastructure(&experimentsDetails, sdkClient)
-			if experimentsDetails.ConnectedInfraID == "" && experimentsDetails.UseExistingInfra && experimentsDetails.ExistingInfraID != "" {
-				experimentsDetails.ConnectedInfraID = experimentsDetails.ExistingInfraID
-				klog.Infof("Manually set ConnectedInfraID to %s from ExistingInfraID", experimentsDetails.ConnectedInfraID)
-			}
 			Expect(err).To(BeNil(), "Failed to setup infrastructure, due to {%v}", err)
 			
 			// Validate that infrastructure ID is properly set
