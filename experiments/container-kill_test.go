@@ -2,8 +2,6 @@ package experiments
 
 import (
 	"fmt"
-	"io"
-	"net/http"
 	"testing"
 	"time"
 
@@ -18,7 +16,6 @@ import (
 	. "github.com/onsi/gomega"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog"
-	yamlChe "sigs.k8s.io/yaml"
 )
 
 func TestContainerKill(t *testing.T) {
@@ -174,109 +171,3 @@ var _ = Describe("BDD of running container-kill experiment", func() {
 		})
 	})
 })
-
-// ConstructContainerKillExperimentRequest constructs the experiment request by fetching template from external source
-func ConstructContainerKillExperimentRequest(details *types.ExperimentDetails, experimentID string) (*models.SaveChaosExperimentRequest, error) {
-	klog.Infof("Constructing experiment request for %s with ID %s", details.ExperimentName, experimentID)
-
-	// Fetch Engine template from external source
-	var finalManifestString string
-	enginePath := "https://hub.litmuschaos.io/api/chaos/master?file=charts/generic/container-kill/engine.yaml"
-
-	// Fetch YAML template
-	res, err := http.Get(enginePath)
-	if err != nil {
-		klog.Errorf("Failed to fetch the engine template, due to %v", err)
-		return nil, fmt.Errorf("failed to fetch engine template: %w", err)
-	}
-	defer res.Body.Close()
-
-	// Read template content
-	fileInput, err := io.ReadAll(res.Body)
-	if err != nil {
-		klog.Errorf("Failed to read data from response: %v", err)
-		return nil, fmt.Errorf("failed to read template data: %w", err)
-	}
-
-	// Parse the template
-	var yamlObj interface{}
-	err = yamlChe.Unmarshal(fileInput, &yamlObj)
-	if err != nil {
-		klog.Errorf("Error unmarshalling fetched template: %v", err)
-		return nil, fmt.Errorf("failed to unmarshal template: %w", err)
-	}
-
-	// Convert to map to modify
-	yamlMap, ok := yamlObj.(map[string]interface{})
-	if ok {
-		// Update metadata fields
-		if metadata, metaOk := yamlMap["metadata"].(map[string]interface{}); metaOk {
-			metadata["name"] = details.ExperimentName
-			metadata["namespace"] = details.ChaosNamespace
-		}
-
-		// Update spec fields if needed
-		if spec, specOk := yamlMap["spec"].(map[string]interface{}); specOk {
-			if experiments, expOk := spec["experiments"].([]interface{}); expOk && len(experiments) > 0 {
-				if exp, expItemOk := experiments[0].(map[string]interface{}); expItemOk {
-					// Set experiment name
-					exp["name"] = details.ExperimentName
-					
-					// Update app info if present
-					if appinfo, appOk := exp["spec"].(map[string]interface{}); appOk {
-						if app, targetOk := appinfo["appinfo"].(map[string]interface{}); targetOk {
-							app["appns"] = details.AppNS
-							app["applabel"] = details.AppLabel
-						}
-					}
-					
-					// Set experiment-specific parameters
-					if components, compOk := exp["spec"].(map[string]interface{}); compOk {
-						if compEnv, envOk := components["components"].(map[string]interface{}); envOk {
-							if env, envListOk := compEnv["env"].([]interface{}); envListOk {
-								// Set container-kill specific parameters
-								for _, envVar := range env {
-									if envMap, isMap := envVar.(map[string]interface{}); isMap {
-										if envMap["name"] == "TARGET_CONTAINER" {
-											envMap["value"] = details.TargetContainer
-										} else if envMap["name"] == "TOTAL_CHAOS_DURATION" {
-											envMap["value"] = fmt.Sprintf("%d", details.ChaosDuration)
-										} else if envMap["name"] == "CONTAINER_RUNTIME" {
-											envMap["value"] = details.ContainerRuntime
-										} else if envMap["name"] == "SOCKET_PATH" {
-											envMap["value"] = details.SocketPath
-										} else if envMap["name"] == "PODS_AFFECTED_PERC" {
-											envMap["value"] = fmt.Sprintf("%d", details.PodsAffectedPerc)
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-
-		// Marshal back to YAML
-		finalManifestBytes, errMarshal := yamlChe.Marshal(yamlMap)
-		if errMarshal != nil {
-			klog.Errorf("Error marshalling modified template: %v", errMarshal)
-			return nil, fmt.Errorf("failed to marshal modified template: %w", errMarshal)
-		}
-		finalManifestString = string(finalManifestBytes)
-	} else {
-		return nil, fmt.Errorf("failed to parse template as map")
-	}
-
-	klog.Infof("Constructed Manifest from template: %s", finalManifestString)
-
-	request := &models.SaveChaosExperimentRequest{
-		ID:             experimentID,
-		Name:           details.ExperimentName,
-		Description:    fmt.Sprintf("CI/CD Triggered Chaos Experiment: %s", details.ExperimentName),
-		Tags:           []string{"chaos-ci-lib", details.ExperimentName},
-		InfraID:        details.ConnectedInfraID,
-		Manifest:       finalManifestString,
-	}
-	return request, nil
-}
