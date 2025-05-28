@@ -35,6 +35,12 @@ go test -o build/_output/pod-network-latency -c experiments/pod-network-latency_
 go test -o build/_output/pod-network-loss -c experiments/pod-network-loss_test.go -v -count=1
 #Creating go binary for disk-fill test
 go test -o build/_output/disk-fill -c experiments/disk-fill_test.go -v -count=1
+#Creating go binary for pod-autoscaler test
+go test -o build/_output/pod-autoscaler -c experiments/pod-autoscaler_test.go -v -count=1
+#Creating go binary for node-io-stress test
+go test -o build/_output/node-io-stress -c experiments/node-io-stress_test.go -v -count=1
+#Creating go binary for pod-network-duplication test
+go test -o build/_output/pod-network-duplication -c experiments/pod-network-duplication_test.go -v -count=1
 
 #Creating go binary for all the tests
 cd experiments && go test -o ../build/_output/all-experiments -c -v -count=1

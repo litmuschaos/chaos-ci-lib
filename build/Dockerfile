@@ -37,6 +37,9 @@ RUN go test -o build/_output/pod-network-corruption -c experiments/pod-network-c
 RUN go test -o build/_output/pod-network-latency -c experiments/pod-network-latency_test.go -v -count=1
 RUN go test -o build/_output/pod-network-loss -c experiments/pod-network-loss_test.go -v -count=1
 RUN go test -o build/_output/disk-fill -c experiments/disk-fill_test.go -v -count=1
+RUN go test -o build/_output/pod-autoscaler -c experiments/pod-autoscaler_test.go -v -count=1
+RUN go test -o build/_output/node-io-stress -c experiments/node-io-stress_test.go -v -count=1
+RUN go test -o build/_output/pod-network-duplication -c experiments/pod-network-duplication_test.go -v -count=1
 
 # Build the all-experiments binary
 RUN cd experiments && go test -o ../build/_output/all-experiments -c -v -count=1
