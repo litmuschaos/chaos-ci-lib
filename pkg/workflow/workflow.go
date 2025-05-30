@@ -1237,7 +1237,23 @@ spec:
     - name: SEQUENCE
       value: 'parallel'
     labels:
-      name: container-kill`
+      name: container-kill
+    configMaps:
+    - name: container-kill
+      mountPath: /tmp/
+    secrets:
+    - name: container-kill
+      mountPath: /tmp/
+    hostFileVolumes:
+    - name: socket-path
+      mountPath: __SOCKET_PATH_VALUE__
+      nodePath: __SOCKET_PATH_VALUE__
+    securityContext:
+      privileged: true
+      capabilities:
+        add:
+        - SYS_ADMIN
+      hostPID: true`
 
 	case DiskFill:
 		return `apiVersion: litmuschaos.io/v1alpha1
