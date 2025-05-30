@@ -29,7 +29,7 @@ func TestInstallLitmus(t *testing.T) {
 	RunSpecs(t, "BDD test")
 }
 
-//BDD Tests to Install Litmus
+// BDD Tests to Install Litmus
 var _ = Describe("BDD of Litmus installation", func() {
 
 	// BDD TEST CASE 1

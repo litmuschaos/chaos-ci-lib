@@ -20,7 +20,7 @@ func TestUninstallLitmus(t *testing.T) {
 	RunSpecs(t, "BDD test")
 }
 
-//BDD Tests to delete litmus
+// BDD Tests to delete litmus
 var _ = Describe("BDD of Litmus cleanup", func() {
 
 	// BDD TEST CASE 1

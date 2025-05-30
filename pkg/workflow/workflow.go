@@ -23,22 +23,22 @@ const (
 	PodDelete    ExperimentType = "pod-delete"
 	PodCPUHog    ExperimentType = "pod-cpu-hog"
 	PodMemoryHog ExperimentType = "pod-memory-hog"
-	
+
 	// Network chaos
-	PodNetworkCorruption   ExperimentType = "pod-network-corruption"
-	PodNetworkLatency      ExperimentType = "pod-network-latency"
-	PodNetworkLoss         ExperimentType = "pod-network-loss"
-	PodNetworkDuplication  ExperimentType = "pod-network-duplication"
-	
+	PodNetworkCorruption  ExperimentType = "pod-network-corruption"
+	PodNetworkLatency     ExperimentType = "pod-network-latency"
+	PodNetworkLoss        ExperimentType = "pod-network-loss"
+	PodNetworkDuplication ExperimentType = "pod-network-duplication"
+
 	// Autoscaling
-	PodAutoscaler  ExperimentType = "pod-autoscaler"
-	
+	PodAutoscaler ExperimentType = "pod-autoscaler"
+
 	// Container chaos
-	ContainerKill  ExperimentType = "container-kill"
-	
+	ContainerKill ExperimentType = "container-kill"
+
 	// Disk chaos
-	DiskFill  ExperimentType = "disk-fill"
-	
+	DiskFill ExperimentType = "disk-fill"
+
 	// Node chaos
 	NodeCPUHog    ExperimentType = "node-cpu-hog"
 	NodeMemoryHog ExperimentType = "node-memory-hog"
@@ -47,71 +47,71 @@ const (
 
 // ExperimentConfig holds configuration for an experiment
 type ExperimentConfig struct {
-	AppNamespace      string
-	AppLabel          string
-	AppKind           string
-	ChaosDuration     string
-	ChaosInterval     string
-	Description       string
-	Tags              []string
-	
+	AppNamespace  string
+	AppLabel      string
+	AppKind       string
+	ChaosDuration string
+	ChaosInterval string
+	Description   string
+	Tags          []string
+
 	// Common parameters
-	TargetContainer   string
-	PodsAffectedPerc  string
-	RampTime          string
-	TargetPods        string
+	TargetContainer    string
+	PodsAffectedPerc   string
+	RampTime           string
+	TargetPods         string
 	DefaultHealthCheck string
-	
+
 	// CPU hog specific parameters
-	CPUCores          string
-	
+	CPUCores string
+
 	// Memory hog specific parameters
 	MemoryConsumption string
-	
+
 	// Node memory hog specific parameters
-	MemoryConsumptionPercentage  string
-	MemoryConsumptionMebibytes   string
-	NumberOfWorkers              string
-	
+	MemoryConsumptionPercentage string
+	MemoryConsumptionMebibytes  string
+	NumberOfWorkers             string
+
 	// Network chaos common parameters
-	NetworkInterface  string
-	TCImage           string
-	LibImage          string
-	ContainerRuntime  string
-	SocketPath        string
-	DestinationIPs    string
-	DestinationHosts  string
-	NodeLabel         string
-	Sequence          string
-	
+	NetworkInterface string
+	TCImage          string
+	LibImage         string
+	ContainerRuntime string
+	SocketPath       string
+	DestinationIPs   string
+	DestinationHosts string
+	NodeLabel        string
+	Sequence         string
+
 	// Network corruption specific
 	NetworkPacketCorruptionPercentage string
-	
+
 	// Network latency specific
-	NetworkLatency  string
-	Jitter          string
-	
+	NetworkLatency string
+	Jitter         string
+
 	// Network loss specific
 	NetworkPacketLossPercentage string
-	
+
 	// Network duplication specific
 	NetworkPacketDuplicationPercentage string
-	
+
 	// Pod Autoscaler specific
-	ReplicaCount      string
-	
+	ReplicaCount string
+
 	// Container kill specific parameters
-	Signal            string
-	
+	Signal string
+
 	// Disk fill specific parameters
 	FillPercentage            string
 	DataBlockSize             string
 	EphemeralStorageMebibytes string
 
 	// Probe configuration
-	UseExistingProbe  bool
-	ProbeName         string
-	ProbeMode         string
+	UseExistingProbe bool
+	ProbeName        string
+	ProbeMode        string
 }
 
 // Getenv helper function to get environment variables with default values
@@ -127,20 +127,20 @@ func getEnv(key, defaultValue string) string {
 func GetDefaultExperimentConfig(experimentType ExperimentType) ExperimentConfig {
 	// Base config with common defaults - reading from environment variables
 	config := ExperimentConfig{
-		AppNamespace:       getEnv("APP_NS", "litmus"),
-		AppLabel:           getEnv("APP_LABEL", "app=nginx-container-kill"),
-		AppKind:            "deployment",
-		PodsAffectedPerc:   "",
-		RampTime:           "",
-		TargetContainer:    "",
-		
+		AppNamespace:     getEnv("APP_NS", "litmus"),
+		AppLabel:         getEnv("APP_LABEL", "app=nginx-container-kill"),
+		AppKind:          "deployment",
+		PodsAffectedPerc: "",
+		RampTime:         "",
+		TargetContainer:  "",
+
 		DefaultHealthCheck: "false",
 		UseExistingProbe:   true,
 		ProbeName:          "myprobe",
 		ProbeMode:          "SOT",
 		Sequence:           "parallel",
 	}
-	
+
 	// Set network experiment common defaults
 	if isNetworkExperiment(experimentType) {
 		config.NetworkInterface = "eth0"
@@ -153,7 +153,7 @@ func GetDefaultExperimentConfig(experimentType ExperimentType) ExperimentConfig 
 		config.NodeLabel = ""
 		config.TargetPods = ""
 	}
-	
+
 	// Apply experiment-specific defaults
 	switch experimentType {
 	case PodDelete:
@@ -161,52 +161,52 @@ func GetDefaultExperimentConfig(experimentType ExperimentType) ExperimentConfig 
 		config.ChaosInterval = "5"
 		config.Description = "Pod delete chaos experiment execution"
 		config.Tags = []string{"pod-delete", "chaos", "litmus"}
-	
+
 	case PodCPUHog:
 		config.ChaosDuration = "30"
 		config.ChaosInterval = "10"
 		config.CPUCores = "1"
 		config.Description = "Pod CPU hog chaos experiment execution"
 		config.Tags = []string{"pod-cpu-hog", "chaos", "litmus"}
-	
+
 	case PodMemoryHog:
 		config.ChaosDuration = "30"
 		config.ChaosInterval = "10"
 		config.MemoryConsumption = "500"
 		config.Description = "Pod memory hog chaos experiment execution"
 		config.Tags = []string{"pod-memory-hog", "chaos", "litmus"}
-	
+
 	case PodNetworkCorruption:
 		config.ChaosDuration = "60"
 		config.NetworkPacketCorruptionPercentage = "100"
 		config.Description = "Pod network corruption chaos experiment execution"
 		config.Tags = []string{"pod-network-corruption", "network-chaos", "litmus"}
-	
+
 	case PodNetworkLatency:
 		config.ChaosDuration = "60"
 		config.NetworkLatency = "2000"
 		config.Jitter = "0"
 		config.Description = "Pod network latency chaos experiment execution"
 		config.Tags = []string{"pod-network-latency", "network-chaos", "litmus"}
-	
+
 	case PodNetworkLoss:
 		config.ChaosDuration = "60"
 		config.NetworkPacketLossPercentage = "100"
 		config.Description = "Pod network loss chaos experiment execution"
 		config.Tags = []string{"pod-network-loss", "network-chaos", "litmus"}
-	
+
 	case PodNetworkDuplication:
 		config.ChaosDuration = "60"
 		config.NetworkPacketDuplicationPercentage = "100"
 		config.Description = "Pod network duplication chaos experiment execution"
 		config.Tags = []string{"pod-network-duplication", "network-chaos", "litmus"}
-		
+
 	case PodAutoscaler:
 		config.ChaosDuration = "60"
 		config.ReplicaCount = "5"
 		config.Description = "Pod autoscaler chaos experiment execution"
 		config.Tags = []string{"pod-autoscaler", "autoscaling", "litmus"}
-		
+
 	case ContainerKill:
 		config.ChaosDuration = "20"
 		config.ChaosInterval = "10"
@@ -223,28 +223,28 @@ func GetDefaultExperimentConfig(experimentType ExperimentType) ExperimentConfig 
 		config.EphemeralStorageMebibytes = ""
 		config.Description = "Disk fill chaos experiment execution"
 		config.Tags = []string{"disk-fill", "chaos", "litmus"}
-		
+
 	case NodeCPUHog:
 		config.ChaosDuration = "60"
 		config.CPUCores = "2"
 		config.Description = "Node CPU hog chaos experiment execution"
 		config.Tags = []string{"node-cpu-hog", "chaos", "litmus"}
-		
+
 	case NodeMemoryHog:
 		config.ChaosDuration = "60"
 		config.MemoryConsumptionPercentage = "0"
-		config.MemoryConsumptionMebibytes = "0"  
+		config.MemoryConsumptionMebibytes = "0"
 		config.NumberOfWorkers = "1"
-		config.NodeLabel = ""  // Explicitly set to empty
-		config.Description = "Node memory hog chaos experiment execution" 
+		config.NodeLabel = "" // Explicitly set to empty
+		config.Description = "Node memory hog chaos experiment execution"
 		config.Tags = []string{"node-memory-hog", "chaos", "litmus"}
-		
+
 	case NodeIOStress:
 		config.ChaosDuration = "60"
 		config.Description = "Node IO stress chaos experiment execution"
 		config.Tags = []string{"node-io-stress", "chaos", "litmus"}
 	}
-	
+
 	return config
 }
 
@@ -312,22 +312,22 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 					"steps": [][]map[string]interface{}{
 						{
 							{
-								"name":     "install-chaos-faults",
-								"template": "install-chaos-faults",
+								"name":      "install-chaos-faults",
+								"template":  "install-chaos-faults",
 								"arguments": map[string]interface{}{},
 							},
 						},
 						{
 							{
-								"name":     string(experimentType) + "-ce5",
-								"template": string(experimentType) + "-ce5",
+								"name":      string(experimentType) + "-ce5",
+								"template":  string(experimentType) + "-ce5",
 								"arguments": map[string]interface{}{},
 							},
 						},
 						{
 							{
-								"name":     "cleanup-chaos-resources",
-								"template": "cleanup-chaos-resources",
+								"name":      "cleanup-chaos-resources",
+								"template":  "cleanup-chaos-resources",
 								"arguments": map[string]interface{}{},
 							},
 						},
@@ -358,7 +358,7 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 
 	// Convert JSON to string
 	manifestStr := string(jsonBytes)
-	
+
 	// Replace with specific placeholders
 	manifestStr = strings.ReplaceAll(manifestStr, "__EXPERIMENT_NAME__", experimentName)
 	manifestStr = strings.ReplaceAll(manifestStr, "__EXPERIMENT_TYPE__", string(experimentType))
@@ -372,7 +372,7 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 	manifestStr = strings.ReplaceAll(manifestStr, "__RAMP_TIME_VALUE__", config.RampTime)
 	manifestStr = strings.ReplaceAll(manifestStr, "__TARGET_PODS_VALUE__", config.TargetPods)
 	manifestStr = strings.ReplaceAll(manifestStr, "__DEFAULT_HEALTH_CHECK_VALUE__", config.DefaultHealthCheck)
-	
+
 	// Replace network experiment specific placeholders
 	if isNetworkExperiment(experimentType) {
 		manifestStr = strings.ReplaceAll(manifestStr, "__NETWORK_INTERFACE_VALUE__", config.NetworkInterface)
@@ -383,32 +383,32 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 		manifestStr = strings.ReplaceAll(manifestStr, "__DESTINATION_IPS_VALUE__", config.DestinationIPs)
 		manifestStr = strings.ReplaceAll(manifestStr, "__DESTINATION_HOSTS_VALUE__", config.DestinationHosts)
 		manifestStr = strings.ReplaceAll(manifestStr, "__SEQUENCE_VALUE__", config.Sequence)
-		
+
 		// For network tests, completely remove NODE_LABEL environment variable
 		nodeLabelRegex1 := regexp.MustCompile(`(?m)^\s*-\s+name:\s+NODE_LABEL\s+value:\s+.*$`)
 		nodeLabelRegex2 := regexp.MustCompile(`(?m)^\s*-\s+name:\s+["']?NODE_LABEL["']?\s+value:\s+.*$`)
 		nodeLabelRegex3 := regexp.MustCompile(`(?m)^\s*name:\s+["']?NODE_LABEL["']?\s+value:\s+.*$`)
-		
+
 		manifestStr = nodeLabelRegex1.ReplaceAllString(manifestStr, "")
 		manifestStr = nodeLabelRegex2.ReplaceAllString(manifestStr, "")
 		manifestStr = nodeLabelRegex3.ReplaceAllString(manifestStr, "")
-		
+
 		// Directly replace any target with nodeLabel
 		targetNodeLabelRegex1 := regexp.MustCompile(`target:\s*{nodeLabel:\s*[^}]*}`)
 		targetNodeLabelRegex2 := regexp.MustCompile(`"target":\s*"{nodeLabel:\s*[^}]*}"`)
 		targetNodeLabelRegex3 := regexp.MustCompile(`"target":\s*"?{nodeLabel:[^}]*}"?`)
 		targetNodeLabelRegex4 := regexp.MustCompile(`target:[^{]*{nodeLabel:[^}]*}`)
-		
+
 		manifestStr = targetNodeLabelRegex1.ReplaceAllString(manifestStr, "target: {}")
 		manifestStr = targetNodeLabelRegex2.ReplaceAllString(manifestStr, "\"target\": \"{}\"")
 		manifestStr = targetNodeLabelRegex3.ReplaceAllString(manifestStr, "\"target\": \"{}\"")
 		manifestStr = targetNodeLabelRegex4.ReplaceAllString(manifestStr, "target: {}")
-		
+
 		// Replace specific __NODE_LABEL_VALUE__ directly
 		manifestStr = strings.ReplaceAll(manifestStr, "__NODE_LABEL_VALUE__", "")
 		manifestStr = strings.ReplaceAll(manifestStr, "nodeLabel: ", "")
 		manifestStr = strings.ReplaceAll(manifestStr, "nodeLabel:", "")
-		
+
 		// Replace experiment-specific network parameters
 		switch experimentType {
 		case PodNetworkCorruption:
@@ -438,24 +438,24 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 			manifestStr = strings.ReplaceAll(manifestStr, "__FILL_PERCENTAGE_VALUE__", config.FillPercentage)
 			manifestStr = strings.ReplaceAll(manifestStr, "__DATA_BLOCK_SIZE_VALUE__", config.DataBlockSize)
 			manifestStr = strings.ReplaceAll(manifestStr, "__EPHEMERAL_STORAGE_MEBIBYTES_VALUE__", config.EphemeralStorageMebibytes)
-			
+
 			// Handle NODE_LABEL specially for DiskFill experiment - if it's empty, remove the entire env var entry
 			if config.NodeLabel == "" {
 				// More aggressive pattern match for disk-fill
 				nodeLabelRegex1 := regexp.MustCompile(`\s*-\s+name:\s+NODE_LABEL\s+value:\s+["']?__NODE_LABEL_VALUE__["']?\s*`)
 				nodeLabelRegex2 := regexp.MustCompile(`\s*-\s+name:\s+["']?NODE_LABEL["']?\s+value:\s+.*\s*`)
 				nodeLabelRegex3 := regexp.MustCompile(`\s*name:\s+["']?NODE_LABEL["']?\s+value:\s+.*\s*`)
-				
+
 				manifestStr = nodeLabelRegex1.ReplaceAllString(manifestStr, "")
 				manifestStr = nodeLabelRegex2.ReplaceAllString(manifestStr, "")
 				manifestStr = nodeLabelRegex3.ReplaceAllString(manifestStr, "")
-				
+
 				// For yaml target field with nodeLabel - matching more formats
 				targetNodeLabelRegex1 := regexp.MustCompile(`target:\s*{nodeLabel:\s*__NODE_LABEL_VALUE__}`)
 				targetNodeLabelRegex2 := regexp.MustCompile(`"target":\s*"{nodeLabel:\s*__NODE_LABEL_VALUE__}"`)
 				targetNodeLabelRegex3 := regexp.MustCompile(`target:\s*["{]\s*nodeLabel:\s*__NODE_LABEL_VALUE__\s*[}"]`)
 				targetNodeLabelRegex4 := regexp.MustCompile(`"target":\s*"?{nodeLabel:\s*__NODE_LABEL_VALUE__}"?`)
-				
+
 				manifestStr = targetNodeLabelRegex1.ReplaceAllString(manifestStr, "target: {}")
 				manifestStr = targetNodeLabelRegex2.ReplaceAllString(manifestStr, "\"target\": \"{}\"")
 				manifestStr = targetNodeLabelRegex3.ReplaceAllString(manifestStr, "target: {}")
@@ -470,17 +470,17 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 				nodeLabelRegex1 := regexp.MustCompile(`\s*-\s+name:\s+NODE_LABEL\s+value:\s+["']?__NODE_LABEL_VALUE__["']?\s*`)
 				nodeLabelRegex2 := regexp.MustCompile(`\s*-\s+name:\s+["']?NODE_LABEL["']?\s+value:\s+.*\s*`)
 				nodeLabelRegex3 := regexp.MustCompile(`\s*name:\s+["']?NODE_LABEL["']?\s+value:\s+.*\s*`)
-				
+
 				manifestStr = nodeLabelRegex1.ReplaceAllString(manifestStr, "")
 				manifestStr = nodeLabelRegex2.ReplaceAllString(manifestStr, "")
 				manifestStr = nodeLabelRegex3.ReplaceAllString(manifestStr, "")
-				
+
 				// For yaml target field with nodeLabel - matching more formats
 				targetNodeLabelRegex1 := regexp.MustCompile(`target:\s*{nodeLabel:\s*__NODE_LABEL_VALUE__}`)
 				targetNodeLabelRegex2 := regexp.MustCompile(`"target":\s*"{nodeLabel:\s*__NODE_LABEL_VALUE__}"`)
 				targetNodeLabelRegex3 := regexp.MustCompile(`target:\s*["{]\s*nodeLabel:\s*__NODE_LABEL_VALUE__\s*[}"]`)
 				targetNodeLabelRegex4 := regexp.MustCompile(`"target":\s*"?{nodeLabel:\s*__NODE_LABEL_VALUE__}"?`)
-				
+
 				manifestStr = targetNodeLabelRegex1.ReplaceAllString(manifestStr, "target: {}")
 				manifestStr = targetNodeLabelRegex2.ReplaceAllString(manifestStr, "\"target\": \"{}\"")
 				manifestStr = targetNodeLabelRegex3.ReplaceAllString(manifestStr, "target: {}")
@@ -495,24 +495,24 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 			manifestStr = strings.ReplaceAll(manifestStr, "__NUMBER_OF_WORKERS_VALUE__", config.NumberOfWorkers)
 			manifestStr = strings.ReplaceAll(manifestStr, "__TARGET_NODES_VALUE__", config.TargetPods)
 			manifestStr = strings.ReplaceAll(manifestStr, "__NODES_AFFECTED_PERC_VALUE__", config.PodsAffectedPerc)
-			
+
 			// Handle NODE_LABEL specially - if it's empty, replace with empty string
 			if config.NodeLabel == "" {
 				// Remove NODE_LABEL environment variable if empty
 				nodeLabelRegex1 := regexp.MustCompile(`\s*-\s+name:\s+NODE_LABEL\s+value:\s+["']?__NODE_LABEL_VALUE__["']?\s*`)
 				nodeLabelRegex2 := regexp.MustCompile(`\s*-\s+name:\s+["']?NODE_LABEL["']?\s+value:\s+.*\s*`)
 				nodeLabelRegex3 := regexp.MustCompile(`\s*name:\s+["']?NODE_LABEL["']?\s+value:\s+.*\s*`)
-				
+
 				manifestStr = nodeLabelRegex1.ReplaceAllString(manifestStr, "")
 				manifestStr = nodeLabelRegex2.ReplaceAllString(manifestStr, "")
 				manifestStr = nodeLabelRegex3.ReplaceAllString(manifestStr, "")
-				
+
 				// For yaml target field with nodeLabel - matching more formats
 				targetNodeLabelRegex1 := regexp.MustCompile(`target:\s*{nodeLabel:\s*__NODE_LABEL_VALUE__}`)
 				targetNodeLabelRegex2 := regexp.MustCompile(`"target":\s*"{nodeLabel:\s*__NODE_LABEL_VALUE__}"`)
 				targetNodeLabelRegex3 := regexp.MustCompile(`target:\s*["{]\s*nodeLabel:\s*__NODE_LABEL_VALUE__\s*[}"]`)
 				targetNodeLabelRegex4 := regexp.MustCompile(`"target":\s*"?{nodeLabel:\s*__NODE_LABEL_VALUE__}"?`)
-				
+
 				manifestStr = targetNodeLabelRegex1.ReplaceAllString(manifestStr, "target: {}")
 				manifestStr = targetNodeLabelRegex2.ReplaceAllString(manifestStr, "\"target\": \"{}\"")
 				manifestStr = targetNodeLabelRegex3.ReplaceAllString(manifestStr, "target: {}")
@@ -522,86 +522,86 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 			}
 		}
 	}
-	
+
 	return manifestStr, nil
 }
 
 func getExperimentTemplates(experimentType ExperimentType, config ExperimentConfig) ([]map[string]interface{}, error) {
-    var templates []map[string]interface{}
+	var templates []map[string]interface{}
 
-    // Artifact name and path matching the working YAML
-    installTemplate := map[string]interface{}{
-        "name": "install-chaos-faults",
-        "inputs": map[string]interface{}{
-            "artifacts": []map[string]interface{}{
-                {
-                    "name": string(experimentType) + "-ce5",
-                    "path": "/tmp/" + string(experimentType) + "-ce5.yaml",
-                    "raw": map[string]interface{}{
-                        "data": getChaosExperimentData(experimentType),
-                    },
-                },
-            },
-        },
-        "container": map[string]interface{}{
-            "name":    "",
-            "image":   "litmuschaos/k8s:2.11.0",
-            "command": []string{"sh", "-c"},
-            "args": []string{
-                "kubectl apply -f /tmp/ -n {{workflow.parameters.adminModeNamespace}} && sleep 30",
-            },
-            "resources": map[string]interface{}{},
-        },
-    }
+	// Artifact name and path matching the working YAML
+	installTemplate := map[string]interface{}{
+		"name": "install-chaos-faults",
+		"inputs": map[string]interface{}{
+			"artifacts": []map[string]interface{}{
+				{
+					"name": string(experimentType) + "-ce5",
+					"path": "/tmp/" + string(experimentType) + "-ce5.yaml",
+					"raw": map[string]interface{}{
+						"data": getChaosExperimentData(experimentType),
+					},
+				},
+			},
+		},
+		"container": map[string]interface{}{
+			"name":    "",
+			"image":   "litmuschaos/k8s:2.11.0",
+			"command": []string{"sh", "-c"},
+			"args": []string{
+				"kubectl apply -f /tmp/ -n {{workflow.parameters.adminModeNamespace}} && sleep 30",
+			},
+			"resources": map[string]interface{}{},
+		},
+	}
 
-    // Create the raw data string for the chaos engine
-    engineData := getChaosEngineData(experimentType)
-    
-    // Create a raw string version of the probe annotation to directly insert into the YAML
-    probeAnnotation := fmt.Sprintf("probeRef: '[{\"name\":\"%s\",\"mode\":\"%s\"}]'", 
-        config.ProbeName, config.ProbeMode)
-    
-    // Add the annotation directly into the YAML string
-    engineData = strings.Replace(
-        engineData,
-        "metadata:",
-        "metadata:\n  annotations:\n    " + probeAnnotation,
-        1)
+	// Create the raw data string for the chaos engine
+	engineData := getChaosEngineData(experimentType)
 
-    runTemplate := map[string]interface{}{
-        "name": string(experimentType) + "-ce5",
-        "inputs": map[string]interface{}{
-            "artifacts": []map[string]interface{}{
-                {
-                    "name": string(experimentType) + "-ce5",
-                    "path": "/tmp/" + string(experimentType) + "-ce5.yaml",
-                    "raw": map[string]interface{}{
-                        "data": engineData,
-                    },
-                },
-            },
-        },
-        "outputs": map[string]interface{}{},
-        "metadata": map[string]interface{}{
-            "labels": map[string]string{
-                "weight": "10",
-            },
-        },
-        "container": map[string]interface{}{
-            "name":  "",
-            "image": "docker.io/litmuschaos/litmus-checker:2.11.0",
-            "args": []string{
-                "-file=/tmp/" + string(experimentType) + "-ce5.yaml",
-                "-saveName=/tmp/engine-name",
-            },
-            "resources": map[string]interface{}{},
-        },
-    }
+	// Create a raw string version of the probe annotation to directly insert into the YAML
+	probeAnnotation := fmt.Sprintf("probeRef: '[{\"name\":\"%s\",\"mode\":\"%s\"}]'",
+		config.ProbeName, config.ProbeMode)
+
+	// Add the annotation directly into the YAML string
+	engineData = strings.Replace(
+		engineData,
+		"metadata:",
+		"metadata:\n  annotations:\n    "+probeAnnotation,
+		1)
+
+	runTemplate := map[string]interface{}{
+		"name": string(experimentType) + "-ce5",
+		"inputs": map[string]interface{}{
+			"artifacts": []map[string]interface{}{
+				{
+					"name": string(experimentType) + "-ce5",
+					"path": "/tmp/" + string(experimentType) + "-ce5.yaml",
+					"raw": map[string]interface{}{
+						"data": engineData,
+					},
+				},
+			},
+		},
+		"outputs": map[string]interface{}{},
+		"metadata": map[string]interface{}{
+			"labels": map[string]string{
+				"weight": "10",
+			},
+		},
+		"container": map[string]interface{}{
+			"name":  "",
+			"image": "docker.io/litmuschaos/litmus-checker:2.11.0",
+			"args": []string{
+				"-file=/tmp/" + string(experimentType) + "-ce5.yaml",
+				"-saveName=/tmp/engine-name",
+			},
+			"resources": map[string]interface{}{},
+		},
+	}
 
 	cleanupTemplate := map[string]interface{}{
-		"name":    "cleanup-chaos-resources",
-		"inputs":  map[string]interface{}{},
-		"outputs": map[string]interface{}{},
+		"name":     "cleanup-chaos-resources",
+		"inputs":   map[string]interface{}{},
+		"outputs":  map[string]interface{}{},
 		"metadata": map[string]interface{}{},
 		"container": map[string]interface{}{
 			"name":    "",
@@ -768,8 +768,8 @@ spec:
     labels:
       name: pod-memory-hog`
 
-    case PodNetworkCorruption:
-        return `apiVersion: litmuschaos.io/v1alpha1
+	case PodNetworkCorruption:
+		return `apiVersion: litmuschaos.io/v1alpha1
 description:
   message: |
     Inject network packet corruption into application pod
@@ -840,8 +840,8 @@ spec:
     labels:
       name: pod-network-corruption`
 
-    case PodNetworkLatency:
-        return `apiVersion: litmuschaos.io/v1alpha1
+	case PodNetworkLatency:
+		return `apiVersion: litmuschaos.io/v1alpha1
 description:
   message: |
     Injects network latency on pods belonging to an app deployment
@@ -914,8 +914,8 @@ spec:
     labels:
       name: pod-network-latency`
 
-    case PodNetworkLoss:
-        return `apiVersion: litmuschaos.io/v1alpha1
+	case PodNetworkLoss:
+		return `apiVersion: litmuschaos.io/v1alpha1
 description:
   message: |
     Injects network packet loss on pods belonging to an app deployment
@@ -986,8 +986,8 @@ spec:
     labels:
       name: pod-network-loss`
 
-    case PodNetworkDuplication:
-        return `apiVersion: litmuschaos.io/v1alpha1
+	case PodNetworkDuplication:
+		return `apiVersion: litmuschaos.io/v1alpha1
 description:
   message: |
     Injects network packet duplication on pods belonging to an app deployment
@@ -1057,9 +1057,9 @@ spec:
       value: "__SEQUENCE_VALUE__"
     labels:
       name: pod-network-duplication`
-      
-    case PodAutoscaler:
-        return `apiVersion: litmuschaos.io/v1alpha1
+
+	case PodAutoscaler:
+		return `apiVersion: litmuschaos.io/v1alpha1
 description:
   message: |
     Scale the application replicas and test the node autoscaling on cluster
@@ -1375,7 +1375,7 @@ spec:
       value: 'parallel'
     labels:
       name: node-cpu-hog`
-      
+
 	case NodeMemoryHog:
 		return `apiVersion: litmuschaos.io/v1alpha1
 description:
@@ -1495,7 +1495,7 @@ spec:
       value: "parallel"
     labels:
       name: node-memory-hog`
-      
+
 	case NodeIOStress:
 		return `apiVersion: litmuschaos.io/v1alpha1
 description:
@@ -1558,9 +1558,9 @@ spec:
 
 // getChaosEngineData returns the ChaosEngine definition for the specified experiment type
 func getChaosEngineData(experimentType ExperimentType) string {
-    switch experimentType {
-    case PodDelete:
-        return `apiVersion: litmuschaos.io/v1alpha1
+	switch experimentType {
+	case PodDelete:
+		return `apiVersion: litmuschaos.io/v1alpha1
 kind: ChaosEngine
 metadata:
   namespace: "{{workflow.parameters.adminModeNamespace}}"
@@ -1593,8 +1593,8 @@ spec:
             - name: TARGET_CONTAINER
               value: "__TARGET_CONTAINER_VALUE__"`
 
-    case PodCPUHog:
-        return `apiVersion: litmuschaos.io/v1alpha1
+	case PodCPUHog:
+		return `apiVersion: litmuschaos.io/v1alpha1
 kind: ChaosEngine
 metadata:
   namespace: "{{workflow.parameters.adminModeNamespace}}"
@@ -1625,8 +1625,8 @@ spec:
             - name: RAMP_TIME
               value: "__RAMP_TIME_VALUE__"`
 
-    case PodMemoryHog:
-        return `apiVersion: litmuschaos.io/v1alpha1
+	case PodMemoryHog:
+		return `apiVersion: litmuschaos.io/v1alpha1
 kind: ChaosEngine
 metadata:
   namespace: "{{workflow.parameters.adminModeNamespace}}"
@@ -1657,8 +1657,8 @@ spec:
             - name: RAMP_TIME
               value: "__RAMP_TIME_VALUE__"`
 
-    case PodNetworkCorruption:
-        return `apiVersion: litmuschaos.io/v1alpha1
+	case PodNetworkCorruption:
+		return `apiVersion: litmuschaos.io/v1alpha1
 kind: ChaosEngine
 metadata:
   namespace: "{{workflow.parameters.adminModeNamespace}}"
@@ -1711,8 +1711,8 @@ spec:
             - name: SEQUENCE
               value: "__SEQUENCE_VALUE__"`
 
-    case PodNetworkLatency:
-        return `apiVersion: litmuschaos.io/v1alpha1
+	case PodNetworkLatency:
+		return `apiVersion: litmuschaos.io/v1alpha1
 kind: ChaosEngine
 metadata:
   namespace: "{{workflow.parameters.adminModeNamespace}}"
@@ -1767,8 +1767,8 @@ spec:
             - name: SEQUENCE
               value: "__SEQUENCE_VALUE__"`
 
-    case PodNetworkLoss:
-        return `apiVersion: litmuschaos.io/v1alpha1
+	case PodNetworkLoss:
+		return `apiVersion: litmuschaos.io/v1alpha1
 kind: ChaosEngine
 metadata:
   namespace: "{{workflow.parameters.adminModeNamespace}}"
@@ -1821,8 +1821,8 @@ spec:
             - name: SEQUENCE
               value: "__SEQUENCE_VALUE__"`
 
-    case PodNetworkDuplication:
-        return `apiVersion: litmuschaos.io/v1alpha1
+	case PodNetworkDuplication:
+		return `apiVersion: litmuschaos.io/v1alpha1
 kind: ChaosEngine
 metadata:
   namespace: "{{workflow.parameters.adminModeNamespace}}"
@@ -1874,9 +1874,9 @@ spec:
               value: "__SOCKET_PATH_VALUE__"
             - name: SEQUENCE
               value: "__SEQUENCE_VALUE__"`
-              
-    case PodAutoscaler:
-        return `apiVersion: litmuschaos.io/v1alpha1
+
+	case PodAutoscaler:
+		return `apiVersion: litmuschaos.io/v1alpha1
 kind: ChaosEngine
 metadata:
   name: nginx-chaos
@@ -1907,8 +1907,8 @@ spec:
             - name: DEFAULT_HEALTH_CHECK
               value: "__DEFAULT_HEALTH_CHECK_VALUE__"`
 
-    case ContainerKill:
-	    return `apiVersion: litmuschaos.io/v1alpha1
+	case ContainerKill:
+		return `apiVersion: litmuschaos.io/v1alpha1
 kind: ChaosEngine
 metadata:
   namespace: "{{workflow.parameters.adminModeNamespace}}"
@@ -1953,8 +1953,8 @@ spec:
             - name: SEQUENCE
               value: "parallel"`
 
-    case DiskFill:
-	    return `apiVersion: litmuschaos.io/v1alpha1
+	case DiskFill:
+		return `apiVersion: litmuschaos.io/v1alpha1
 kind: ChaosEngine
 metadata:
   namespace: "{{workflow.parameters.adminModeNamespace}}"
@@ -2000,7 +2000,7 @@ spec:
               value: "containerd"
             - name: SEQUENCE
               value: "parallel"`
-			  
+
 	case NodeCPUHog:
 		return `apiVersion: litmuschaos.io/v1alpha1
 kind: ChaosEngine
@@ -2035,7 +2035,7 @@ spec:
               value: "__DEFAULT_HEALTH_CHECK_VALUE__"
             - name: SEQUENCE
               value: "parallel"`
-			  
+
 	case NodeMemoryHog:
 		return `apiVersion: litmuschaos.io/v1alpha1
 kind: ChaosEngine
@@ -2074,7 +2074,7 @@ spec:
               value: "litmuschaos.docker.scarf.sh/litmuschaos/go-runner:3.16.0"
             - name: SEQUENCE
               value: "parallel"`
-			  
+
 	case NodeIOStress:
 		return `apiVersion: litmuschaos.io/v1alpha1
 kind: ChaosEngine
@@ -2110,9 +2110,9 @@ spec:
             - name: SEQUENCE
               value: "parallel"`
 
-    default:
-        return ""
-    }
+	default:
+		return ""
+	}
 }
 
 // Helper functions for constructing experiment requests with default configuration
@@ -2202,18 +2202,18 @@ func applyProbeConfigFromEnv(config *ExperimentConfig) {
 		useExistingProbe, err := strconv.ParseBool(useExistingProbeStr)
 		if err == nil {
 			config.UseExistingProbe = useExistingProbe
-			
+
 			// Get probe name and mode regardless of useExistingProbe value
 			probeName := os.Getenv("LITMUS_PROBE_NAME")
 			if probeName != "" {
 				config.ProbeName = probeName
 			}
-			
+
 			probeMode := os.Getenv("LITMUS_PROBE_MODE")
 			if probeMode != "" {
 				config.ProbeMode = probeMode
 			}
-			
+
 			if !useExistingProbe {
 				// We now support creating custom probes through the SDK.
 				// This is handled in the CreateProbe function which should be called before experiment creation.
@@ -2243,10 +2243,10 @@ func CreateProbe(details *types.ExperimentDetails, sdkClient sdk.Client, litmusP
 	// Setup defaults for HTTP probe
 	trueBool := true
 	desc := fmt.Sprintf("HTTP probe for %s", details.ProbeName)
-	
+
 	// Prepare probe request based on probe type
 	var probeReq probe.ProbeRequest
-	
+
 	switch details.ProbeType {
 	case "httpProbe":
 		probeReq = probe.ProbeRequest{
@@ -2291,7 +2291,7 @@ func CreateProbe(details *types.ExperimentDetails, sdkClient sdk.Client, litmusP
 	default:
 		return fmt.Errorf("unsupported probe type: %s", details.ProbeType)
 	}
-	
+
 	// Create probe
 	createdProbe, err := sdkClient.Probes().Create(probeReq, litmusProjectID)
 	if err != nil {
@@ -2300,7 +2300,7 @@ func CreateProbe(details *types.ExperimentDetails, sdkClient sdk.Client, litmusP
 	}
 
 	log.Printf("Successfully created probe: %s", createdProbe.Name)
-	
-  details.CreatedProbeID = createdProbe.Name
+
+	details.CreatedProbeID = createdProbe.Name
 	return nil
 }

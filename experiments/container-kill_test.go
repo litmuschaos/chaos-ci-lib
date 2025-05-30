@@ -23,7 +23,7 @@ func TestContainerKill(t *testing.T) {
 	RunSpecs(t, "BDD test")
 }
 
-//BDD for running container-kill experiment
+// BDD for running container-kill experiment
 var _ = Describe("BDD of running container-kill experiment", func() {
 
 	Context("Check for container-kill experiment via SDK", func() {
@@ -48,14 +48,14 @@ var _ = Describe("BDD of running container-kill experiment", func() {
 			sdkClient, err = environment.GenerateClientSetFromSDK()
 			Expect(err).To(BeNil(), "Unable to generate Litmus SDK client, due to {%v}", err)
 
-			// Setup infrastructure 
+			// Setup infrastructure
 			By("[PreChaos]: Setting up infrastructure")
 			err = infrastructure.SetupInfrastructure(&experimentsDetails, sdkClient)
 			Expect(err).To(BeNil(), "Failed to setup infrastructure, due to {%v}", err)
-			
+
 			// Validate that infrastructure ID is properly set
 			Expect(experimentsDetails.ConnectedInfraID).NotTo(BeEmpty(), "Setup failed: ConnectedInfraID is empty after connection attempt.")
-			
+
 			// Setup probe if configured to do so
 			if experimentsDetails.CreateProbe {
 				By("[PreChaos]: Setting up probe")
@@ -72,76 +72,75 @@ var _ = Describe("BDD of running container-kill experiment", func() {
 			Expect(err).To(BeNil(), "Error during BeforeEach setup: %v", err)
 			klog.Info("Executing V3 SDK Path for Experiment")
 
-
-            // 1. Construct Experiment Request
-            By("[SDK Prepare]: Constructing Chaos Experiment Request")
-            experimentName := pkg.GenerateUniqueExperimentName("container-kill")
-            experimentsDetails.ExperimentName = experimentName
-            experimentID := pkg.GenerateExperimentID()
-            experimentRequest, errConstruct := workflow.ConstructContainerKillExperimentRequest(&experimentsDetails, experimentID, experimentName)
-            Expect(errConstruct).To(BeNil(), "Failed to construct experiment request: %v", errConstruct)
+			// 1. Construct Experiment Request
+			By("[SDK Prepare]: Constructing Chaos Experiment Request")
+			experimentName := pkg.GenerateUniqueExperimentName("container-kill")
+			experimentsDetails.ExperimentName = experimentName
+			experimentID := pkg.GenerateExperimentID()
+			experimentRequest, errConstruct := workflow.ConstructContainerKillExperimentRequest(&experimentsDetails, experimentID, experimentName)
+			Expect(errConstruct).To(BeNil(), "Failed to construct experiment request: %v", errConstruct)
 
 			// 2. Create and Run Experiment via SDK
 			By("[SDK Prepare]: Creating and Running Chaos Experiment")
-			klog.Infof("About to create experiment with ID: %s, Name: %s, InfraID: %s", 
+			klog.Infof("About to create experiment with ID: %s, Name: %s, InfraID: %s",
 				experimentID, experimentName, experimentsDetails.ConnectedInfraID)
 			klog.Infof("Experiment request details: %+v", experimentRequest)
-			
+
 			createResponse, err := sdkClient.Experiments().Create(experimentsDetails.LitmusProjectID, *experimentRequest)
-            Expect(err).To(BeNil(), "Failed to create experiment via SDK: %v", err)
+			Expect(err).To(BeNil(), "Failed to create experiment via SDK: %v", err)
 			klog.Infof("Created experiment successfully. Response: %s", createResponse)
 			klog.Infof("Experiment creation completed for ID: %s", experimentID)
-			
+
 			// 3. Get the experiment run ID
-            By("[SDK Query]: Polling for experiment run to become available")
+			By("[SDK Query]: Polling for experiment run to become available")
 			klog.Infof("Starting to poll for experiment runs for experiment ID: %s", experimentID)
 			klog.Infof("Connected Infrastructure ID: %s", experimentsDetails.ConnectedInfraID)
 			klog.Infof("Project ID: %s", experimentsDetails.LitmusProjectID)
-			
+
 			var experimentRunID string
 			maxRetries := 20
 			found := false
-			
+
 			for i := 0; i < maxRetries; i++ {
 				klog.Infof("Polling attempt %d/%d for experiment runs...", i+1, maxRetries)
 				time.Sleep(5 * time.Second)
-				
+
 				listExperimentRunsReq := models.ListExperimentRunRequest{
 					ExperimentIDs: []*string{&experimentID},
 				}
-				
+
 				klog.Infof("Making ListRuns request with ExperimentIDs: [%s]", experimentID)
 				runsList, err := sdkClient.Experiments().ListRuns(listExperimentRunsReq)
 				if err != nil {
 					klog.Warningf("Error fetching experiment runs on attempt %d: %v", i+1, err)
 					continue
 				}
-				
-				klog.Infof("Attempt %d: Found %d experiment runs for experiment %s on infra %s", i+1, 
+
+				klog.Infof("Attempt %d: Found %d experiment runs for experiment %s on infra %s", i+1,
 					len(runsList.ExperimentRuns), experimentID, experimentsDetails.ConnectedInfraID)
-				
+
 				// Log details of found experiment runs for debugging
 				if len(runsList.ExperimentRuns) == 0 {
 					klog.Infof("  No experiment runs found in response")
 				} else {
 					for j, run := range runsList.ExperimentRuns {
-						klog.Infof("  Run %d: ID=%s, ExperimentID=%s, Phase=%s", 
+						klog.Infof("  Run %d: ID=%s, ExperimentID=%s, Phase=%s",
 							j+1, run.ExperimentRunID, run.ExperimentID, run.Phase)
 					}
 				}
-				
+
 				if len(runsList.ExperimentRuns) > 0 {
 					experimentRunID = runsList.ExperimentRuns[0].ExperimentRunID
 					klog.Infof("Found experiment run ID: %s", experimentRunID)
 					found = true
 					break
 				}
-				
+
 				klog.Infof("No experiment runs found yet, retrying after delay...")
 			}
-			
+
 			Expect(found).To(BeTrue(), "No experiment runs found for experiment after %d retries", maxRetries)
-			
+
 			// 4. Poll for Experiment Run Status
 			By("[SDK Status]: Polling for Experiment Run Status")
 			var finalPhase string
@@ -149,9 +148,9 @@ var _ = Describe("BDD of running container-kill experiment", func() {
 			timeout := time.After(time.Duration(experimentsDetails.ExperimentTimeout) * time.Minute)
 			ticker := time.NewTicker(time.Duration(experimentsDetails.ExperimentPollingInterval) * time.Second)
 			defer ticker.Stop()
-			
+
 			queuedCount := 0 // Track how long experiment stays in queued state
-			
+
 		pollLoop:
 			for {
 				select {
@@ -167,12 +166,12 @@ var _ = Describe("BDD of running container-kill experiment", func() {
 						continue
 					}
 					klog.Infof("Experiment Run %s current phase: %s", experimentRunID, phase)
-					
+
 					// Check if experiment is stuck in queued state
 					if phase == "Queued" {
 						queuedCount++
 						klog.Infof("Experiment has been in Queued state for %d polling cycles", queuedCount)
-						
+
 						// If stuck in queued for more than 3 cycles (about 45 seconds), get debug logs
 						if queuedCount == 3 {
 							klog.Warning("Experiment stuck in Queued state - collecting debug logs...")
@@ -180,7 +179,7 @@ var _ = Describe("BDD of running container-kill experiment", func() {
 					} else {
 						queuedCount = 0 // Reset counter if not queued
 					}
-					
+
 					finalPhases := []string{"Completed", "Completed_With_Error", "Failed", "Error", "Stopped", "Skipped", "Aborted", "Timeout", "Terminated"}
 					if pkg.ContainsString(finalPhases, phase) {
 						finalPhase = phase
@@ -189,7 +188,7 @@ var _ = Describe("BDD of running container-kill experiment", func() {
 					}
 				}
 			}
-			
+
 			// 5. Post Validation / Verdict Check
 			By("[SDK Verdict]: Checking Experiment Run Verdict")
 			Expect(pollError).To(BeNil())
@@ -209,48 +208,48 @@ var _ = Describe("BDD of running container-kill experiment", func() {
 // Helper function to get pod logs for debugging
 func getSubscriberPodLogs() {
 	klog.Info("=== DEBUGGING: Getting subscriber pod logs ===")
-	
+
 	// Get subscriber pod logs
 	klog.Info("Getting subscriber pod logs...")
 	err := pkg.Kubectl("logs", "-n", "litmus", "-l", "app=subscriber", "--tail=50")
 	if err != nil {
 		klog.Errorf("Failed to get subscriber logs: %v", err)
 	}
-	
+
 	// Get workflow controller logs
 	klog.Info("Getting workflow controller logs...")
 	err = pkg.Kubectl("logs", "-n", "litmus", "-l", "app=workflow-controller", "--tail=50")
 	if err != nil {
 		klog.Errorf("Failed to get workflow controller logs: %v", err)
 	}
-	
+
 	// Get chaos operator logs
 	klog.Info("Getting chaos operator logs...")
 	err = pkg.Kubectl("logs", "-n", "litmus", "-l", "app=chaos-operator-ce", "--tail=50")
 	if err != nil {
 		klog.Errorf("Failed to get chaos operator logs: %v", err)
 	}
-	
+
 	// Get all pods status in litmus namespace
 	klog.Info("Getting litmus namespace pods status...")
 	err = pkg.Kubectl("get", "pods", "-n", "litmus", "-o", "wide")
 	if err != nil {
 		klog.Errorf("Failed to get pods status: %v", err)
 	}
-	
+
 	// Get workflows in litmus namespace
 	klog.Info("Getting workflows in litmus namespace...")
 	err = pkg.Kubectl("get", "workflows", "-n", "litmus")
 	if err != nil {
 		klog.Errorf("Failed to get workflows: %v", err)
 	}
-	
+
 	// Get chaos engines in litmus namespace
 	klog.Info("Getting chaos engines in litmus namespace...")
 	err = pkg.Kubectl("get", "chaosengines", "-n", "litmus")
 	if err != nil {
 		klog.Errorf("Failed to get chaos engines: %v", err)
 	}
-	
+
 	klog.Info("=== END DEBUGGING LOGS ===")
 }

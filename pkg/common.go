@@ -64,7 +64,7 @@ func GenerateUniqueExperimentName(baseName string) string {
 
 // GenerateExperimentIDs creates all necessary IDs for a chaos experiment
 // including workflow name, experiment ID, and other related identifiers.
-func GenerateExperimentID() (string) {
+func GenerateExperimentID() string {
 	// Generate a unique ID for the experiment
 	experimentID := uuid.New().String()[:8]
 	return experimentID

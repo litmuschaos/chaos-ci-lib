@@ -8,4 +8,4 @@ func ContainsString(slice []string, str string) bool {
 		}
 	}
 	return false
-} 
+}

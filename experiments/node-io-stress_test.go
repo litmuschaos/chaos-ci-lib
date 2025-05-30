@@ -24,7 +24,7 @@ func TestNodeIOStress(t *testing.T) {
 	RunSpecs(t, "BDD test")
 }
 
-//BDD for running node-io-stress experiment
+// BDD for running node-io-stress experiment
 var _ = Describe("BDD of running node-io-stress experiment", func() {
 
 	Context("Check for node-io-stress experiment via SDK", func() {
@@ -49,14 +49,14 @@ var _ = Describe("BDD of running node-io-stress experiment", func() {
 			sdkClient, err = environment.GenerateClientSetFromSDK()
 			Expect(err).To(BeNil(), "Unable to generate Litmus SDK client, due to {%v}", err)
 
-			// Setup infrastructure 
+			// Setup infrastructure
 			By("[PreChaos]: Setting up infrastructure")
 			err = infrastructure.SetupInfrastructure(&experimentsDetails, sdkClient)
 			Expect(err).To(BeNil(), "Failed to setup infrastructure, due to {%v}", err)
-			
+
 			// Validate that infrastructure ID is properly set
 			Expect(experimentsDetails.ConnectedInfraID).NotTo(BeEmpty(), "Setup failed: ConnectedInfraID is empty after connection attempt.")
-			
+
 			// Setup probe if configured to do so
 			if experimentsDetails.CreateProbe {
 				By("[PreChaos]: Setting up probe")
@@ -86,41 +86,41 @@ var _ = Describe("BDD of running node-io-stress experiment", func() {
 			createResponse, err := sdkClient.Experiments().Create(experimentsDetails.LitmusProjectID, *experimentRequest)
 			Expect(err).To(BeNil(), "Failed to create experiment via SDK: %v", err)
 			klog.Infof("Created experiment: %s", createResponse)
-			
+
 			// 3. Get the experiment run ID
 			By("[SDK Query]: Polling for experiment run to become available")
 			var experimentRunID string
 			maxRetries := 10
 			found := false
-			
+
 			for i := 0; i < maxRetries; i++ {
 				time.Sleep(3 * time.Second)
-				
+
 				listExperimentRunsReq := models.ListExperimentRunRequest{
 					ExperimentIDs: []*string{&experimentID},
 				}
-				
+
 				runsList, err := sdkClient.Experiments().ListRuns(listExperimentRunsReq)
 				if err != nil {
 					klog.Warningf("Error fetching experiment runs: %v", err)
 					continue
 				}
-				
-				klog.Infof("Attempt %d: Found %d experiment runs", i+1, 
+
+				klog.Infof("Attempt %d: Found %d experiment runs", i+1,
 					len(runsList.ExperimentRuns))
-				
+
 				if len(runsList.ExperimentRuns) > 0 {
 					experimentRunID = runsList.ExperimentRuns[0].ExperimentRunID
 					klog.Infof("Found experiment run ID: %s", experimentRunID)
 					found = true
 					break
 				}
-				
+
 				klog.Infof("Retrying after delay...")
 			}
-			
+
 			Expect(found).To(BeTrue(), "No experiment runs found for experiment after %d retries", maxRetries)
-			
+
 			// 4. Poll for Experiment Run Status
 			By("[SDK Status]: Polling for Experiment Run Status")
 			var finalPhase string
@@ -128,7 +128,7 @@ var _ = Describe("BDD of running node-io-stress experiment", func() {
 			timeout := time.After(time.Duration(experimentsDetails.ExperimentTimeout) * time.Minute)
 			ticker := time.NewTicker(time.Duration(experimentsDetails.ExperimentPollingInterval) * time.Second)
 			defer ticker.Stop()
-			
+
 		pollLoop:
 			for {
 				select {
@@ -151,7 +151,7 @@ var _ = Describe("BDD of running node-io-stress experiment", func() {
 					}
 				}
 			}
-			
+
 			// 5. Post Validation / Verdict Check
 			By("[SDK Verdict]: Checking Experiment Run Verdict")
 			Expect(pollError).To(BeNil())
@@ -167,4 +167,3 @@ var _ = Describe("BDD of running node-io-stress experiment", func() {
 		})
 	})
 })
-

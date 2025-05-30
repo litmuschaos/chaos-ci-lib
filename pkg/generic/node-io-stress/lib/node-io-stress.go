@@ -9,7 +9,7 @@ import (
 	"github.com/litmuschaos/chaos-operator/pkg/apis/litmuschaos/v1alpha1"
 )
 
-//InstallNodeIOStressEngine installs the given chaosengine for the experiment
+// InstallNodeIOStressEngine installs the given chaosengine for the experiment
 func InstallNodeIOStressEngine(experimentsDetails *types.ExperimentDetails, chaosEngine *v1alpha1.ChaosEngine, clients environment.ClientSets) error {
 
 	experimentENV := setNodeIOStressExperimentENV(experimentsDetails)

@@ -12,7 +12,7 @@ import (
 	"k8s.io/klog"
 )
 
-//RunnerPodStatus will check the runner pod running state
+// RunnerPodStatus will check the runner pod running state
 func RunnerPodStatus(experimentsDetails *types.ExperimentDetails, runnerNamespace string, clients environment.ClientSets) error {
 
 	//Fetching the runner pod and Checking if it gets in Running state or not
@@ -65,7 +65,7 @@ func CheckRunnerPodCreation(engineName, runnerNS string, clients environment.Cli
 	return err
 }
 
-//PodStatusCheck checks the pod running status
+// PodStatusCheck checks the pod running status
 func PodStatusCheck(experimentsDetails *types.ExperimentDetails, clients environment.ClientSets) error {
 	PodList, err := clients.KubeClient.CoreV1().Pods(experimentsDetails.AppNS).List(metav1.ListOptions{LabelSelector: experimentsDetails.AppLabel})
 	if err != nil {
@@ -138,7 +138,7 @@ func ChaosPodStatus(experimentsDetails *types.ExperimentDetails, clients environ
 	return nil
 }
 
-//WaitForEngineCompletion waits for engine state to get completed
+// WaitForEngineCompletion waits for engine state to get completed
 func WaitForEngineCompletion(experimentsDetails *types.ExperimentDetails, clients environment.ClientSets) error {
 	err := retry.
 		Times(uint(experimentsDetails.Duration / experimentsDetails.Delay)).
@@ -161,7 +161,7 @@ func WaitForEngineCompletion(experimentsDetails *types.ExperimentDetails, client
 	return err
 }
 
-//WaitForRunnerCompletion waits for runner pod completion
+// WaitForRunnerCompletion waits for runner pod completion
 func WaitForRunnerCompletion(experimentsDetails *types.ExperimentDetails, clients environment.ClientSets) error {
 	err := retry.
 		Times(uint(experimentsDetails.Duration / experimentsDetails.Delay)).
@@ -184,7 +184,7 @@ func WaitForRunnerCompletion(experimentsDetails *types.ExperimentDetails, client
 	return err
 }
 
-//WaitForChaosResultCompletion waits for chaosresult state to get completed
+// WaitForChaosResultCompletion waits for chaosresult state to get completed
 func WaitForChaosResultCompletion(experimentsDetails *types.ExperimentDetails, clients environment.ClientSets) error {
 	err := retry.
 		Times(uint(experimentsDetails.Duration / experimentsDetails.Delay)).

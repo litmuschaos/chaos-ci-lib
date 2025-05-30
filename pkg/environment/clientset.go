@@ -16,16 +16,16 @@ import (
 
 // // ClientSets is a collection of clientSets and kubeConfig needed
 type ClientSets struct {
-	KubeClient    *kubernetes.Clientset
-	LitmusClient  *chaosClient.LitmuschaosV1alpha1Client
-	KubeConfig    *rest.Config
-	DynamicClient dynamic.Interface
-	SDKClient     litmusSDK.Client
+	KubeClient      *kubernetes.Clientset
+	LitmusClient    *chaosClient.LitmuschaosV1alpha1Client
+	KubeConfig      *rest.Config
+	DynamicClient   dynamic.Interface
+	SDKClient       litmusSDK.Client
 	LitmusEndpoint  string
-	LitmusUsername  string 
+	LitmusUsername  string
 	LitmusPassword  string
-	LitmusProjectID string 
-	LitmusToken     string 
+	LitmusProjectID string
+	LitmusToken     string
 }
 
 // GenerateClientSetFromSDK will generate the Litmus SDK client
@@ -35,16 +35,16 @@ func GenerateClientSetFromSDK() (litmusSDK.Client, error) {
 	username := os.Getenv("LITMUS_USERNAME")
 	password := os.Getenv("LITMUS_PASSWORD")
 	projectID := os.Getenv("LITMUS_PROJECT_ID")
-	
+
 	if endpoint == "" || username == "" || password == "" || projectID == "" {
 		return nil, errors.New("LITMUS_ENDPOINT, LITMUS_USERNAME, LITMUS_PASSWORD, and LITMUS_PROJECT_ID environment variables must be set")
 	}
-	
+
 	// Initialize Litmus SDK client
 	sdkClient, err := litmusSDK.NewClient(litmusSDK.ClientOptions{
-		Endpoint: endpoint,
-		Username: username,
-		Password: password,
+		Endpoint:  endpoint,
+		Username:  username,
+		Password:  password,
 		ProjectID: projectID,
 	})
 	if err != nil {
@@ -52,23 +52,23 @@ func GenerateClientSetFromSDK() (litmusSDK.Client, error) {
 	}
 
 	// Get the token using the Auth() method
-    token := sdkClient.Auth().GetToken()
-    if token != "" {
-        klog.Infof("Successfully retrieved token from SDK client")
-    } else {
-        klog.Warningf("Could not retrieve token from SDK client Auth().GetToken()")
-        return nil, errors.New("Failed to retrieve token from SDK client")
-    }
+	token := sdkClient.Auth().GetToken()
+	if token != "" {
+		klog.Infof("Successfully retrieved token from SDK client")
+	} else {
+		klog.Warningf("Could not retrieve token from SDK client Auth().GetToken()")
+		return nil, errors.New("Failed to retrieve token from SDK client")
+	}
 	return sdkClient, nil
 }
 
 // Helper method to construct Credentials struct for SDK calls
 func (clientSets *ClientSets) GetSDKCredentials() types.Credentials {
 	return types.Credentials{
-		Endpoint: clientSets.LitmusEndpoint,
-		Token:          clientSets.LitmusToken,
-		Username:       clientSets.LitmusUsername, 
-		ProjectID:      clientSets.LitmusProjectID,
+		Endpoint:  clientSets.LitmusEndpoint,
+		Token:     clientSets.LitmusToken,
+		Username:  clientSets.LitmusUsername,
+		ProjectID: clientSets.LitmusProjectID,
 	}
 }
 
@@ -140,4 +140,3 @@ func DynamicClientSet(config *rest.Config) (dynamic.Interface, error) {
 	}
 	return dynamicClientSet, nil
 }
-

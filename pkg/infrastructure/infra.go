@@ -80,36 +80,36 @@ func SetupEnvironment(experimentsDetails *types.ExperimentDetails, sdkClient sdk
 	if envName == "" {
 		envName = "chaos-ci-env" // Default environment name
 	}
-	
-	// Configure environment properties 
+
+	// Configure environment properties
 	// Valid values for environment type are "PROD" and "NON_PROD"
 	envType := os.Getenv("ENV_TYPE")
 	if envType == "" || (envType != "PROD" && envType != "NON_PROD") {
 		envType = "NON_PROD" // Default environment type
 	}
-	
+
 	envDescription := os.Getenv("ENV_DESCRIPTION")
 	if envDescription == "" {
 		envDescription = "CI Test Environment"
 	}
 
 	environmentID := pkg.GenerateEnvironmentID()
-	
+
 	// Create the environment request with the correct environment type
 	createEnvironmentRequest := model.CreateEnvironmentRequest{
-		Name: envName,
-		Type: model.EnvironmentType(envType),
-		Description: &envDescription,
+		Name:          envName,
+		Type:          model.EnvironmentType(envType),
+		Description:   &envDescription,
 		EnvironmentID: environmentID,
 	}
-	
+
 	// Create the environment using SDK
 	klog.Infof("Creating new environment: %s with type: %s", envName, envType)
 	_, err := sdkClient.Environments().Create(envName, createEnvironmentRequest)
 	if err != nil {
 		return "", err
 	}
-	
+
 	klog.Infof("Successfully created environment with ID: %s", environmentID)
 	return environmentID, nil
 }
@@ -123,7 +123,7 @@ func ConnectInfrastructure(experimentsDetails *types.ExperimentDetails, sdkClien
 	if err != nil {
 		return err
 	}
-	
+
 	// Use the obtained environmentID
 	experimentsDetails.InfraEnvironmentID = environmentID
 
@@ -217,7 +217,7 @@ func createInfrastructureViaRegisterInfra(experimentsDetails *types.ExperimentDe
 	if token == "" {
 		return "", fmt.Errorf("failed to get authentication token from SDK client")
 	}
-	
+
 	// Construct the GraphQL mutation
 	mutation := `
 		mutation registerInfra($projectID: ID!, $request: RegisterInfraRequest!) {
@@ -228,50 +228,50 @@ func createInfrastructureViaRegisterInfra(experimentsDetails *types.ExperimentDe
 			}
 		}
 	`
-	
+
 	// Prepare the variables for the mutation with all required fields
 	variables := map[string]interface{}{
 		"projectID": experimentsDetails.LitmusProjectID,
 		"request": map[string]interface{}{
 			"infraScope":         experimentsDetails.InfraScope,
-			"name":              experimentsDetails.InfraName,
-			"environmentID":     experimentsDetails.InfraEnvironmentID,
-			"description":       experimentsDetails.InfraDescription,
-			"platformName":      "Kubernetes", // Fixed to Kubernetes as per UI
-			"infraNamespace":    experimentsDetails.InfraNamespace,
-			"serviceAccount":    experimentsDetails.InfraSA,
-			"infraNsExists":     experimentsDetails.InfraNsExists,
-			"infraSaExists":     experimentsDetails.InfraSaExists,
-			"skipSsl":           experimentsDetails.InfraSkipSSL,
+			"name":               experimentsDetails.InfraName,
+			"environmentID":      experimentsDetails.InfraEnvironmentID,
+			"description":        experimentsDetails.InfraDescription,
+			"platformName":       "Kubernetes", // Fixed to Kubernetes as per UI
+			"infraNamespace":     experimentsDetails.InfraNamespace,
+			"serviceAccount":     experimentsDetails.InfraSA,
+			"infraNsExists":      experimentsDetails.InfraNsExists,
+			"infraSaExists":      experimentsDetails.InfraSaExists,
+			"skipSsl":            experimentsDetails.InfraSkipSSL,
 			"infrastructureType": "Kubernetes", // Fixed to Kubernetes as per UI
 		},
 	}
-	
+
 	// Prepare the GraphQL request
 	requestBody := map[string]interface{}{
 		"operationName": "registerInfra",
 		"variables":     variables,
 		"query":         mutation,
 	}
-	
+
 	// Convert to JSON
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal GraphQL request: %v", err)
 	}
-	
+
 	// Make the HTTP request to the GraphQL endpoint
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
-	
+
 	graphqlURL := fmt.Sprintf("%s/api/query", experimentsDetails.LitmusEndpoint)
 	klog.Infof("Making registerInfra GraphQL request to: %s", graphqlURL)
 	req, err := http.NewRequest("POST", graphqlURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("failed to create HTTP request: %v", err)
 	}
-	
+
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
@@ -279,23 +279,23 @@ func createInfrastructureViaRegisterInfra(experimentsDetails *types.ExperimentDe
 	req.Header.Set("Origin", experimentsDetails.LitmusEndpoint)
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "chaos-ci-lib/1.0")
-	
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to make GraphQL request: %v", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("GraphQL request failed with status: %d", resp.StatusCode)
 	}
-	
+
 	// Read the response
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("failed to read response body: %v", err)
 	}
-	
+
 	// Parse the GraphQL response
 	var graphqlResponse struct {
 		Data struct {
@@ -308,32 +308,32 @@ func createInfrastructureViaRegisterInfra(experimentsDetails *types.ExperimentDe
 			Message string `json:"message"`
 		} `json:"errors"`
 	}
-	
+
 	err = json.Unmarshal(responseBody, &graphqlResponse)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse GraphQL response: %v", err)
 	}
-	
+
 	// Check for GraphQL errors
 	if len(graphqlResponse.Errors) > 0 {
 		return "", fmt.Errorf("GraphQL error: %s", graphqlResponse.Errors[0].Message)
 	}
-	
+
 	// Extract the infraID and store the manifest for later use
 	infraID := graphqlResponse.Data.RegisterInfra.InfraID
 	manifest := graphqlResponse.Data.RegisterInfra.Manifest
-	
+
 	if infraID == "" {
 		return "", fmt.Errorf("empty infraID received from registerInfra response")
 	}
-	
+
 	if manifest == "" {
 		return "", fmt.Errorf("empty manifest received from registerInfra response")
 	}
-	
+
 	// Store the manifest in experimentsDetails for later use
 	experimentsDetails.InfraManifest = manifest
-	
+
 	klog.Infof("Successfully created infrastructure via registerInfra: %s", infraID)
 	return infraID, nil
 }
@@ -341,7 +341,7 @@ func createInfrastructureViaRegisterInfra(experimentsDetails *types.ExperimentDe
 // ensureNamespaceExists ensures the specified namespace exists
 func ensureNamespaceExists(namespace string) error {
 	klog.Infof("Ensuring namespace '%s' exists...", namespace)
-	
+
 	// Check if namespace already exists
 	command := []string{"get", "namespace", namespace}
 	err := pkg.Kubectl(command...)
@@ -349,7 +349,7 @@ func ensureNamespaceExists(namespace string) error {
 		klog.Infof("Namespace '%s' already exists", namespace)
 		return nil
 	}
-	
+
 	// Create namespace if it doesn't exist
 	klog.Infof("Creating namespace '%s'...", namespace)
 	command = []string{"create", "namespace", namespace}
@@ -357,7 +357,7 @@ func ensureNamespaceExists(namespace string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create namespace %s: %v", namespace, err)
 	}
-	
+
 	klog.Infof("Successfully created namespace '%s'", namespace)
 	return nil
 }
@@ -365,23 +365,23 @@ func ensureNamespaceExists(namespace string) error {
 // applyLitmusCRDs applies the Litmus CRDs required for infrastructure components
 func applyLitmusCRDs() error {
 	klog.Info("Applying Litmus CRDs...")
-	
+
 	// Use the CRD URL from the UI instructions
 	crdURL := "https://raw.githubusercontent.com/litmuschaos/litmus/master/mkdocs/docs/3.6.1/litmus-portal-crds-3.6.1.yml"
-	
+
 	// Apply CRDs directly from URL
 	command := []string{"apply", "-f", crdURL}
 	err := pkg.Kubectl(command...)
 	if err != nil {
 		return fmt.Errorf("failed to apply Litmus CRDs from %s: %v", crdURL, err)
 	}
-	
+
 	klog.Info("Successfully applied Litmus CRDs")
-	
+
 	// Wait a moment for CRDs to be registered
 	klog.Info("Waiting for CRDs to be registered...")
 	time.Sleep(5 * time.Second)
-	
+
 	return nil
 }
 
@@ -392,7 +392,7 @@ func applyInfrastructureManifest(manifestContent []byte, experimentsDetails *typ
 	// Log the manifest content to check for ID mismatches
 	manifestStr := string(manifestContent)
 	klog.Infof("Expected infrastructure ID: %s", experimentsDetails.ConnectedInfraID)
-	
+
 	// Check if the manifest contains the correct infrastructure ID
 	if strings.Contains(manifestStr, experimentsDetails.ConnectedInfraID) {
 		klog.Info("✅ Manifest contains the correct infrastructure ID")
@@ -459,12 +459,12 @@ func waitForInfrastructureActivation(experimentsDetails *types.ExperimentDetails
 				klog.Warningf("Error checking infrastructure status: %v", err)
 				continue
 			}
-			
+
 			if isActive {
 				klog.Infof("Infrastructure %s is now active!", experimentsDetails.ConnectedInfraID)
 				return nil
 			}
-			
+
 			klog.Infof("Infrastructure %s is still not active, waiting...", experimentsDetails.ConnectedInfraID)
 		}
 	}
@@ -477,7 +477,7 @@ func checkInfrastructureStatusViaGraphQL(experimentsDetails *types.ExperimentDet
 	if token == "" {
 		return false, fmt.Errorf("failed to get authentication token from SDK client")
 	}
-	
+
 	// Construct the GraphQL query
 	query := `
 		query listInfras($projectID: ID!) {
@@ -491,36 +491,36 @@ func checkInfrastructureStatusViaGraphQL(experimentsDetails *types.ExperimentDet
 			}
 		}
 	`
-	
+
 	// Prepare the variables for the query
 	variables := map[string]interface{}{
 		"projectID": experimentsDetails.LitmusProjectID,
 	}
-	
+
 	// Prepare the GraphQL request
 	requestBody := map[string]interface{}{
 		"operationName": "listInfras",
 		"variables":     variables,
 		"query":         query,
 	}
-	
+
 	// Convert to JSON
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
 		return false, fmt.Errorf("failed to marshal GraphQL request: %v", err)
 	}
-	
+
 	// Make the HTTP request to the GraphQL endpoint
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
-	
+
 	graphqlURL := fmt.Sprintf("%s/api/query", experimentsDetails.LitmusEndpoint)
 	req, err := http.NewRequest("POST", graphqlURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return false, fmt.Errorf("failed to create HTTP request: %v", err)
 	}
-	
+
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
@@ -528,31 +528,31 @@ func checkInfrastructureStatusViaGraphQL(experimentsDetails *types.ExperimentDet
 	req.Header.Set("Origin", experimentsDetails.LitmusEndpoint)
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "chaos-ci-lib/1.0")
-	
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return false, fmt.Errorf("failed to make GraphQL request: %v", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return false, fmt.Errorf("GraphQL request failed with status: %d", resp.StatusCode)
 	}
-	
+
 	// Read the response
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return false, fmt.Errorf("failed to read response body: %v", err)
 	}
-	
+
 	// Parse the GraphQL response
 	var graphqlResponse struct {
 		Data struct {
 			ListInfras struct {
 				Infras []struct {
-					InfraID         string `json:"infraID"`
-					Name            string `json:"name"`
-					IsActive        bool   `json:"isActive"`
+					InfraID          string `json:"infraID"`
+					Name             string `json:"name"`
+					IsActive         bool   `json:"isActive"`
 					IsInfraConfirmed bool   `json:"isInfraConfirmed"`
 				} `json:"infras"`
 			} `json:"listInfras"`
@@ -561,27 +561,27 @@ func checkInfrastructureStatusViaGraphQL(experimentsDetails *types.ExperimentDet
 			Message string `json:"message"`
 		} `json:"errors"`
 	}
-	
+
 	err = json.Unmarshal(responseBody, &graphqlResponse)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse GraphQL response: %v", err)
 	}
-	
+
 	// Check for GraphQL errors
 	if len(graphqlResponse.Errors) > 0 {
 		return false, fmt.Errorf("GraphQL error: %s", graphqlResponse.Errors[0].Message)
 	}
-	
+
 	// Find our infrastructure in the list
 	for _, infra := range graphqlResponse.Data.ListInfras.Infras {
 		if infra.InfraID == experimentsDetails.ConnectedInfraID {
-			klog.Infof("GraphQL: Found matching infrastructure %s: isActive=%v, isConfirmed=%v", 
+			klog.Infof("GraphQL: Found matching infrastructure %s: isActive=%v, isConfirmed=%v",
 				infra.InfraID, infra.IsActive, infra.IsInfraConfirmed)
 			return infra.IsActive, nil
 		}
 	}
 
-	klog.Errorf("Infrastructure %s not found in list of %d infrastructures", 
+	klog.Errorf("Infrastructure %s not found in list of %d infrastructures",
 		experimentsDetails.ConnectedInfraID, len(graphqlResponse.Data.ListInfras.Infras))
 	return false, fmt.Errorf("infrastructure %s not found in list", experimentsDetails.ConnectedInfraID)
-} 
+}

@@ -75,7 +75,7 @@ func printChaosPodLogs(experimentsDetails *types.ExperimentDetails, clients envi
 	return nil
 }
 
-//printHelperPodLogs will print the helper pod logs when the experiment is not passed
+// printHelperPodLogs will print the helper pod logs when the experiment is not passed
 func printHelperPodLogs(experimentName, namespace, UID, jobCleanupPolicy string, clients environment.ClientSets) error {
 
 	podList, err := clients.KubeClient.CoreV1().Pods(namespace).List(metav1.ListOptions{})
@@ -92,7 +92,7 @@ func printHelperPodLogs(experimentName, namespace, UID, jobCleanupPolicy string,
 	return nil
 }
 
-//getPodLogs will print the logs of the given pod
+// getPodLogs will print the logs of the given pod
 func getPodLogs(podName, namespace string, clients environment.ClientSets) error {
 
 	req := clients.KubeClient.CoreV1().Pods(namespace).GetLogs(podName, &v1.PodLogOptions{})

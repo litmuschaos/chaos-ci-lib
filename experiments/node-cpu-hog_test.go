@@ -24,7 +24,7 @@ func TestNodeCPUHog(t *testing.T) {
 	RunSpecs(t, "BDD test")
 }
 
-//BDD for running node-cpu-hog experiment
+// BDD for running node-cpu-hog experiment
 var _ = Describe("BDD of running node-cpu-hog experiment", func() {
 
 	Context("Check for node-cpu-hog experiment via SDK", func() {
@@ -49,14 +49,14 @@ var _ = Describe("BDD of running node-cpu-hog experiment", func() {
 			sdkClient, err = environment.GenerateClientSetFromSDK()
 			Expect(err).To(BeNil(), "Unable to generate Litmus SDK client, due to {%v}", err)
 
-			// Setup infrastructure 
+			// Setup infrastructure
 			By("[PreChaos]: Setting up infrastructure")
 			err = infrastructure.SetupInfrastructure(&experimentsDetails, sdkClient)
 			Expect(err).To(BeNil(), "Failed to setup infrastructure, due to {%v}", err)
-			
+
 			// Validate that infrastructure ID is properly set
 			Expect(experimentsDetails.ConnectedInfraID).NotTo(BeEmpty(), "Setup failed: ConnectedInfraID is empty after connection attempt.")
-			
+
 			// Setup probe if configured to do so
 			if experimentsDetails.CreateProbe {
 				By("[PreChaos]: Setting up probe")
@@ -73,55 +73,54 @@ var _ = Describe("BDD of running node-cpu-hog experiment", func() {
 			Expect(err).To(BeNil(), "Error during BeforeEach setup: %v", err)
 			klog.Info("Executing V3 SDK Path for Experiment")
 
-
-            // 1. Construct Experiment Request
-            By("[SDK Prepare]: Constructing Chaos Experiment Request")
-            experimentName := pkg.GenerateUniqueExperimentName("node-cpu-hog")
-            experimentsDetails.ExperimentName = experimentName
-            experimentID := pkg.GenerateExperimentID()
-            experimentRequest, errConstruct := workflow.ConstructNodeCPUHogExperimentRequest(&experimentsDetails, experimentID, experimentName)
-            Expect(errConstruct).To(BeNil(), "Failed to construct experiment request: %v", errConstruct)
+			// 1. Construct Experiment Request
+			By("[SDK Prepare]: Constructing Chaos Experiment Request")
+			experimentName := pkg.GenerateUniqueExperimentName("node-cpu-hog")
+			experimentsDetails.ExperimentName = experimentName
+			experimentID := pkg.GenerateExperimentID()
+			experimentRequest, errConstruct := workflow.ConstructNodeCPUHogExperimentRequest(&experimentsDetails, experimentID, experimentName)
+			Expect(errConstruct).To(BeNil(), "Failed to construct experiment request: %v", errConstruct)
 
 			// 2. Create and Run Experiment via SDK
 			By("[SDK Prepare]: Creating and Running Chaos Experiment")
 			createResponse, err := sdkClient.Experiments().Create(experimentsDetails.LitmusProjectID, *experimentRequest)
-            Expect(err).To(BeNil(), "Failed to create experiment via SDK: %v", err)
+			Expect(err).To(BeNil(), "Failed to create experiment via SDK: %v", err)
 			klog.Infof("Created experiment: %s", createResponse)
-			
+
 			// 3. Get the experiment run ID
-            By("[SDK Query]: Polling for experiment run to become available")
+			By("[SDK Query]: Polling for experiment run to become available")
 			var experimentRunID string
 			maxRetries := 10
 			found := false
-			
+
 			for i := 0; i < maxRetries; i++ {
 				time.Sleep(3 * time.Second)
-				
+
 				listExperimentRunsReq := models.ListExperimentRunRequest{
 					ExperimentIDs: []*string{&experimentID},
 				}
-				
+
 				runsList, err := sdkClient.Experiments().ListRuns(listExperimentRunsReq)
 				if err != nil {
 					klog.Warningf("Error fetching experiment runs: %v", err)
 					continue
 				}
-				
-				klog.Infof("Attempt %d: Found %d experiment runs", i+1, 
+
+				klog.Infof("Attempt %d: Found %d experiment runs", i+1,
 					len(runsList.ExperimentRuns))
-				
+
 				if len(runsList.ExperimentRuns) > 0 {
 					experimentRunID = runsList.ExperimentRuns[0].ExperimentRunID
 					klog.Infof("Found experiment run ID: %s", experimentRunID)
 					found = true
 					break
 				}
-				
+
 				klog.Infof("Retrying after delay...")
 			}
-			
+
 			Expect(found).To(BeTrue(), "No experiment runs found for experiment after %d retries", maxRetries)
-			
+
 			// 4. Poll for Experiment Run Status
 			By("[SDK Status]: Polling for Experiment Run Status")
 			var finalPhase string
@@ -129,7 +128,7 @@ var _ = Describe("BDD of running node-cpu-hog experiment", func() {
 			timeout := time.After(time.Duration(experimentsDetails.ExperimentTimeout) * time.Minute)
 			ticker := time.NewTicker(time.Duration(experimentsDetails.ExperimentPollingInterval) * time.Second)
 			defer ticker.Stop()
-			
+
 		pollLoop:
 			for {
 				select {
@@ -152,7 +151,7 @@ var _ = Describe("BDD of running node-cpu-hog experiment", func() {
 					}
 				}
 			}
-			
+
 			// 5. Post Validation / Verdict Check
 			By("[SDK Verdict]: Checking Experiment Run Verdict")
 			Expect(pollError).To(BeNil())

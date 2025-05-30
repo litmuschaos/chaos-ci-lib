@@ -29,7 +29,7 @@ import (
 
 var err error
 
-//CreateChaosResource creates litmus components with given inputs
+// CreateChaosResource creates litmus components with given inputs
 func CreateChaosResource(fileData []byte, namespace string, clients environment.ClientSets) error {
 
 	decoder := yamlutil.NewYAMLOrJSONDecoder(bytes.NewReader(fileData), 100)
@@ -92,7 +92,7 @@ func CreateChaosResource(fileData []byte, namespace string, clients environment.
 	}
 }
 
-//InstallGoRbac installs and configure rbac for running go based chaos
+// InstallGoRbac installs and configure rbac for running go based chaos
 func InstallRbac(experimentsDetails *types.ExperimentDetails, rbacNamespace string) error {
 
 	//Fetch RBAC file
@@ -119,7 +119,7 @@ func InstallRbac(experimentsDetails *types.ExperimentDetails, rbacNamespace stri
 	return nil
 }
 
-//InstallChaosEngine installs the given go based chaos engine
+// InstallChaosEngine installs the given go based chaos engine
 func InstallChaosEngine(experimentsDetails *types.ExperimentDetails, chaosEngine *v1alpha1.ChaosEngine, experimentENVs *ENVDetails, clients environment.ClientSets) error {
 
 	// contains all the envs
@@ -205,7 +205,7 @@ func InstallChaosEngine(experimentsDetails *types.ExperimentDetails, chaosEngine
 	return nil
 }
 
-//InstallLitmus installs the latest version of litmus
+// InstallLitmus installs the latest version of litmus
 func InstallLitmus(testsDetails *types.ExperimentDetails) error {
 
 	log.Info("Installing Litmus ...")
