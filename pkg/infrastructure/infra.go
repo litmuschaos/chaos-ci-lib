@@ -490,12 +490,39 @@ func waitForInfrastructureActivation(experimentsDetails *types.ExperimentDetails
 		case <-timeout:
 			return fmt.Errorf("infrastructure activation timed out after %d minutes", timeoutMinutes)
 		case <-ticker.C:
-			// Check infrastructure status
-			// Note: This would require an SDK method to check infrastructure status
-			// For now, we'll assume it's active after applying the manifest
-			// In a real implementation, you would check the infrastructure status via the SDK
-			klog.Info("Infrastructure activation check - assuming active after manifest application")
-			return nil
+			// Check infrastructure status using SDK
+			isActive, err := checkInfrastructureStatus(experimentsDetails, sdkClient)
+			if err != nil {
+				klog.Warningf("Error checking infrastructure status: %v", err)
+				continue
+			}
+			
+			if isActive {
+				klog.Infof("Infrastructure %s is now active!", experimentsDetails.ConnectedInfraID)
+				return nil
+			}
+			
+			klog.Infof("Infrastructure %s is still not active, waiting...", experimentsDetails.ConnectedInfraID)
 		}
 	}
+}
+
+// checkInfrastructureStatus checks if the infrastructure is active using the SDK
+func checkInfrastructureStatus(experimentsDetails *types.ExperimentDetails, sdkClient sdk.Client) (bool, error) {
+	// Use the SDK to list infrastructures and check the status
+	infraList, err := sdkClient.Infrastructure().List()
+	if err != nil {
+		return false, fmt.Errorf("failed to list infrastructures: %v", err)
+	}
+
+	// Find our infrastructure in the list
+	for _, infra := range infraList.Infras {
+		if infra.InfraID == experimentsDetails.ConnectedInfraID {
+			klog.Infof("Infrastructure %s status: isActive=%v, isConfirmed=%v", 
+				infra.InfraID, infra.IsActive, infra.IsInfraConfirmed)
+			return infra.IsActive, nil
+		}
+	}
+
+	return false, fmt.Errorf("infrastructure %s not found in list", experimentsDetails.ConnectedInfraID)
 } 
