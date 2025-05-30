@@ -127,8 +127,8 @@ func getEnv(key, defaultValue string) string {
 func GetDefaultExperimentConfig(experimentType ExperimentType) ExperimentConfig {
 	// Base config with common defaults - reading from environment variables
 	config := ExperimentConfig{
-		AppNamespace:     getEnv("APP_NS", "litmus"),
-		AppLabel:         getEnv("APP_LABEL", "app=nginx-container-kill"),
+		AppNamespace:     getEnv("APP_NS", "default"),
+		AppLabel:         getEnv("APP_LABEL", "app=nginx"),
 		AppKind:          "deployment",
 		PodsAffectedPerc: "",
 		RampTime:         "",
