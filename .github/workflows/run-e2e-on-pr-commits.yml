@@ -16,8 +16,7 @@ jobs:
       LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
-      APP_NS: "litmus"
-      APP_LABEL 
+      APP_NS: "litmus" 
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
