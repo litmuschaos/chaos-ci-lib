@@ -118,7 +118,7 @@ type ExperimentConfig struct {
 func GetDefaultExperimentConfig(experimentType ExperimentType) ExperimentConfig {
 	// Base config with common defaults
 	config := ExperimentConfig{
-		AppNamespace:       "litmus-2",
+		AppNamespace:       "litmus",
 		AppLabel:           "app=nginx",
 		AppKind:            "deployment",
 		PodsAffectedPerc:   "",
@@ -273,7 +273,7 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 		"kind":       "Workflow",
 		"metadata": map[string]interface{}{
 			"name":      experimentName,
-			"namespace": "litmus-2",
+			"namespace": "litmus",
 		},
 		"spec": map[string]interface{}{
 			"entrypoint":         string(experimentType) + "-engine",
@@ -289,7 +289,7 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 				"parameters": []map[string]string{
 					{
 						"name":  "adminModeNamespace",
-						"value": "litmus-2",
+						"value": "litmus",
 					},
 				},
 			},
