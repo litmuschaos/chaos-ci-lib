@@ -509,20 +509,156 @@ func waitForInfrastructureActivation(experimentsDetails *types.ExperimentDetails
 
 // checkInfrastructureStatus checks if the infrastructure is active using the SDK
 func checkInfrastructureStatus(experimentsDetails *types.ExperimentDetails, sdkClient sdk.Client) (bool, error) {
-	// Use the SDK to list infrastructures and check the status
-	infraList, err := sdkClient.Infrastructure().List()
+	klog.Infof("Checking infrastructure status for ID: %s", experimentsDetails.ConnectedInfraID)
+	
+	// Use direct GraphQL query since SDK List method is not working correctly
+	klog.Info("Using GraphQL query to check infrastructure status...")
+	isActive, err := checkInfrastructureStatusViaGraphQL(experimentsDetails, sdkClient)
 	if err != nil {
-		return false, fmt.Errorf("failed to list infrastructures: %v", err)
+		klog.Errorf("GraphQL query failed: %v", err)
+		
+		// Fallback to SDK method (though it seems to be broken)
+		klog.Info("Trying SDK List method as fallback...")
+		infraList, sdkErr := sdkClient.Infrastructure().List()
+		if sdkErr != nil {
+			klog.Errorf("Failed to list infrastructures via SDK: %v", sdkErr)
+			return false, fmt.Errorf("both GraphQL and SDK methods failed: GraphQL error: %v, SDK error: %v", err, sdkErr)
+		}
+		
+		klog.Infof("SDK List: Raw response: %+v", infraList)
+		klog.Infof("SDK List: Total infrastructures found: %d", len(infraList.Infras))
+		
+		// Find our infrastructure in the SDK list
+		for _, infra := range infraList.Infras {
+			if infra.InfraID == experimentsDetails.ConnectedInfraID {
+				klog.Infof("SDK List: Found matching infrastructure %s: isActive=%v, isConfirmed=%v", 
+					infra.InfraID, infra.IsActive, infra.IsInfraConfirmed)
+				return infra.IsActive, nil
+			}
+		}
+		
+		return false, fmt.Errorf("infrastructure %s not found in either GraphQL or SDK results", experimentsDetails.ConnectedInfraID)
 	}
+	
+	return isActive, nil
+}
 
+// checkInfrastructureStatusViaGraphQL checks if the infrastructure is active using a direct GraphQL query
+func checkInfrastructureStatusViaGraphQL(experimentsDetails *types.ExperimentDetails, sdkClient sdk.Client) (bool, error) {
+	// Get authentication token from SDK client
+	token := sdkClient.Auth().GetToken()
+	if token == "" {
+		return false, fmt.Errorf("failed to get authentication token from SDK client")
+	}
+	
+	// Construct the GraphQL mutation based on the UI pattern
+	mutation := `
+		query listInfras($projectID: ID!) {
+			listInfras(projectID: $projectID) {
+				infras {
+					infraID
+					name
+					isActive
+					isInfraConfirmed
+				}
+			}
+		}
+	`
+	
+	// Prepare the variables for the mutation
+	variables := map[string]interface{}{
+		"projectID": experimentsDetails.LitmusProjectID,
+	}
+	
+	// Prepare the GraphQL request
+	requestBody := map[string]interface{}{
+		"operationName": "listInfras",
+		"variables":     variables,
+		"query":         mutation,
+	}
+	
+	// Convert to JSON
+	jsonData, err := json.Marshal(requestBody)
+	if err != nil {
+		return false, fmt.Errorf("failed to marshal GraphQL request: %v", err)
+	}
+	
+	// Make the HTTP request to the GraphQL endpoint
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+	
+	// The GraphQL endpoint is on the frontend port with /api/query path
+	graphqlURL := fmt.Sprintf("%s/api/query", experimentsDetails.LitmusEndpoint)
+	klog.Infof("Making GraphQL request to: %s", graphqlURL)
+	req, err := http.NewRequest("POST", graphqlURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return false, fmt.Errorf("failed to create HTTP request: %v", err)
+	}
+	
+	// Set headers
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	req.Header.Set("Referer", experimentsDetails.LitmusEndpoint)
+	req.Header.Set("Origin", experimentsDetails.LitmusEndpoint)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "chaos-ci-lib/1.0")
+	
+	resp, err := client.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("failed to make GraphQL request: %v", err)
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("GraphQL request failed with status: %d", resp.StatusCode)
+	}
+	
+	// Read the response
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return false, fmt.Errorf("failed to read response body: %v", err)
+	}
+	
+	klog.Infof("GraphQL: Raw response body: %s", string(responseBody))
+	
+	// Parse the GraphQL response
+	var graphqlResponse struct {
+		Data struct {
+			ListInfras struct {
+				Infras []struct {
+					InfraID         string `json:"infraID"`
+					Name            string `json:"name"`
+					IsActive        bool   `json:"isActive"`
+					IsInfraConfirmed bool   `json:"isInfraConfirmed"`
+				} `json:"infras"`
+			} `json:"listInfras"`
+		} `json:"data"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+	
+	err = json.Unmarshal(responseBody, &graphqlResponse)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse GraphQL response: %v", err)
+	}
+	
+	// Check for GraphQL errors
+	if len(graphqlResponse.Errors) > 0 {
+		return false, fmt.Errorf("GraphQL error: %s", graphqlResponse.Errors[0].Message)
+	}
+	
 	// Find our infrastructure in the list
-	for _, infra := range infraList.Infras {
+	for _, infra := range graphqlResponse.Data.ListInfras.Infras {
 		if infra.InfraID == experimentsDetails.ConnectedInfraID {
-			klog.Infof("Infrastructure %s status: isActive=%v, isConfirmed=%v", 
+			klog.Infof("GraphQL: Found matching infrastructure %s: isActive=%v, isConfirmed=%v", 
 				infra.InfraID, infra.IsActive, infra.IsInfraConfirmed)
 			return infra.IsActive, nil
 		}
 	}
 
+	klog.Errorf("Infrastructure %s not found in list of %d infrastructures", 
+		experimentsDetails.ConnectedInfraID, len(graphqlResponse.Data.ListInfras.Infras))
 	return false, fmt.Errorf("infrastructure %s not found in list", experimentsDetails.ConnectedInfraID)
 } 
