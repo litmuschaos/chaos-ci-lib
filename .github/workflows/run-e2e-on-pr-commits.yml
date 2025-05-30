@@ -24,6 +24,16 @@ jobs:
       INFRA_NAME: "ci-infra-container-kill"
       INFRA_NAMESPACE: "litmus"
       INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_PROBE_NAME: "ci-http-probe"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -76,6 +86,10 @@ jobs:
         run: |
           kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
           kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
+          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
 
       - name: Run container-kill experiment
         run: make container-kill
@@ -92,12 +106,23 @@ jobs:
       LITMUS_PASSWORD: "litmus"
       LITMUS_PROJECT_ID: "admin-project"
       INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
       ENV_NAME: "ci-test-env"
       ENV_TYPE: "NON_PROD"
       INFRA_NAME: "ci-infra-disk-fill"
       INFRA_NAMESPACE: "litmus"
       INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_PROBE_NAME: "ci-http-probe"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -142,6 +167,10 @@ jobs:
         run: |
           kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
           kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
+          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
 
       - name: Run disk-fill experiment
         run: make disk-fill
@@ -165,6 +194,16 @@ jobs:
       INFRA_NAME: "ci-infra-node-cpu-hog"
       INFRA_NAMESPACE: "litmus"
       INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_PROBE_NAME: "ci-http-probe"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -209,6 +248,10 @@ jobs:
         run: |
           kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
           kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
+          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
 
       - name: Run node-cpu-hog experiment
         run: make node-cpu-hog
@@ -225,12 +268,23 @@ jobs:
       LITMUS_PASSWORD: "litmus"
       LITMUS_PROJECT_ID: "admin-project"
       INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
       ENV_NAME: "ci-test-env"
       ENV_TYPE: "NON_PROD"
       INFRA_NAME: "ci-infra-node-io-stress"
       INFRA_NAMESPACE: "litmus"
       INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_PROBE_NAME: "ci-http-probe"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -275,6 +329,10 @@ jobs:
         run: |
           kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
           kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
+          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
 
       - name: Run node-io-stress experiment
         run: make node-io-stress
@@ -291,12 +349,23 @@ jobs:
       LITMUS_PASSWORD: "litmus"
       LITMUS_PROJECT_ID: "admin-project"
       INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
       ENV_NAME: "ci-test-env"
       ENV_TYPE: "NON_PROD"
       INFRA_NAME: "ci-infra-node-memory-hog"
       INFRA_NAMESPACE: "litmus"
       INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_PROBE_NAME: "ci-http-probe"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -341,6 +410,10 @@ jobs:
         run: |
           kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
           kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
+          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
 
       - name: Run node-memory-hog experiment
         run: make node-memory-hog
@@ -357,12 +430,23 @@ jobs:
       LITMUS_PASSWORD: "litmus"
       LITMUS_PROJECT_ID: "admin-project"
       INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
       ENV_NAME: "ci-test-env"
       ENV_TYPE: "NON_PROD"
       INFRA_NAME: "ci-infra-pod-autoscaler"
       INFRA_NAMESPACE: "litmus"
       INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_PROBE_NAME: "ci-http-probe"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -407,6 +491,10 @@ jobs:
         run: |
           kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
           kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
+          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
 
       - name: Run pod-autoscaler experiment
         run: make pod-autoscaler
@@ -423,12 +511,23 @@ jobs:
       LITMUS_PASSWORD: "litmus"
       LITMUS_PROJECT_ID: "admin-project"
       INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
       ENV_NAME: "ci-test-env"
       ENV_TYPE: "NON_PROD"
       INFRA_NAME: "ci-infra-pod-cpu-hog"
       INFRA_NAMESPACE: "litmus"
       INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_PROBE_NAME: "ci-http-probe"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -473,6 +572,10 @@ jobs:
         run: |
           kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
           kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
+          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
 
       - name: Run pod-cpu-hog experiment
         run: make pod-cpu-hog
@@ -489,12 +592,23 @@ jobs:
       LITMUS_PASSWORD: "litmus"
       LITMUS_PROJECT_ID: "admin-project"
       INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
       ENV_NAME: "ci-test-env"
       ENV_TYPE: "NON_PROD"
       INFRA_NAME: "ci-infra-pod-delete"
       INFRA_NAMESPACE: "litmus"
       INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_PROBE_NAME: "ci-http-probe"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -539,6 +653,10 @@ jobs:
         run: |
           kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
           kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
+          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
 
       - name: Run pod-delete experiment
         run: make pod-delete
@@ -555,12 +673,23 @@ jobs:
       LITMUS_PASSWORD: "litmus"
       LITMUS_PROJECT_ID: "admin-project"
       INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
       ENV_NAME: "ci-test-env"
       ENV_TYPE: "NON_PROD"
       INFRA_NAME: "ci-infra-pod-memory-hog"
       INFRA_NAMESPACE: "litmus"
       INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_PROBE_NAME: "ci-http-probe"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -605,6 +734,10 @@ jobs:
         run: |
           kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
           kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
+          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
 
       - name: Run pod-memory-hog experiment
         run: make pod-memory-hog
@@ -621,12 +754,23 @@ jobs:
       LITMUS_PASSWORD: "litmus"
       LITMUS_PROJECT_ID: "admin-project"
       INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
       ENV_NAME: "ci-test-env"
       ENV_TYPE: "NON_PROD"
       INFRA_NAME: "ci-infra-pod-network-corruption"
       INFRA_NAMESPACE: "litmus"
       INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_PROBE_NAME: "ci-http-probe"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -671,6 +815,10 @@ jobs:
         run: |
           kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
           kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
+          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
 
       - name: Run pod-network-corruption experiment
         run: make pod-network-corruption
@@ -687,12 +835,23 @@ jobs:
       LITMUS_PASSWORD: "litmus"
       LITMUS_PROJECT_ID: "admin-project"
       INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
       ENV_NAME: "ci-test-env"
       ENV_TYPE: "NON_PROD"
       INFRA_NAME: "ci-infra-pod-network-duplication"
       INFRA_NAMESPACE: "litmus"
       INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_PROBE_NAME: "ci-http-probe"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -737,6 +896,10 @@ jobs:
         run: |
           kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
           kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
+          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
 
       - name: Run pod-network-corruption experiment
         run: make pod-network-corruption
@@ -753,12 +916,23 @@ jobs:
       LITMUS_PASSWORD: "litmus"
       LITMUS_PROJECT_ID: "admin-project"
       INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
       ENV_NAME: "ci-test-env"
       ENV_TYPE: "NON_PROD"
       INFRA_NAME: "ci-infra-pod-network-latency"
       INFRA_NAMESPACE: "litmus"
       INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_PROBE_NAME: "ci-http-probe"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -803,6 +977,10 @@ jobs:
         run: |
           kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
           kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
+          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
 
       - name: Run pod-network-corruption experiment
         run: make pod-network-corruption
@@ -819,12 +997,23 @@ jobs:
       LITMUS_PASSWORD: "litmus"
       LITMUS_PROJECT_ID: "admin-project"
       INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
       ENV_NAME: "ci-test-env"
       ENV_TYPE: "NON_PROD"
       INFRA_NAME: "ci-infra-pod-network-loss"
       INFRA_NAMESPACE: "litmus"
       INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_PROBE_NAME: "ci-http-probe"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -869,6 +1058,10 @@ jobs:
         run: |
           kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
           kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
+          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
 
       - name: Run pod-network-corruption experiment
         run: make pod-network-corruption

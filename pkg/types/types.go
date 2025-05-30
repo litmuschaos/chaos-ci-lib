@@ -71,6 +71,7 @@ type ExperimentDetails struct {
 	InfraNodeSelector          string 
 	InfraTolerations           string 
 	ConnectedInfraID           string // Stores the ID of the infra connected via SDK
+	InfraManifest              string // Stores the manifest returned by registerInfra
 	ExperimentRunID            string // Stores the ID of the experiment run started via SDK
 	
 	// New infrastructure control variables
