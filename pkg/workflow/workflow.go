@@ -114,12 +114,21 @@ type ExperimentConfig struct {
 	ProbeMode         string
 }
 
+// Getenv helper function to get environment variables with default values
+func getEnv(key, defaultValue string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		value = defaultValue
+	}
+	return value
+}
+
 // GetDefaultExperimentConfig returns default configuration for a given experiment type
 func GetDefaultExperimentConfig(experimentType ExperimentType) ExperimentConfig {
-	// Base config with common defaults
+	// Base config with common defaults - reading from environment variables
 	config := ExperimentConfig{
-		AppNamespace:       "litmus",
-		AppLabel:           "app=nginx",
+		AppNamespace:       getEnv("APP_NS", "litmus"),
+		AppLabel:           getEnv("APP_LABEL", "app=nginx-container-kill"),
 		AppKind:            "deployment",
 		PodsAffectedPerc:   "",
 		RampTime:           "",

@@ -16,7 +16,8 @@ jobs:
       LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
-      APP_NS: "litmus" 
+      APP_NS: "litmus"
+      APP_LABEL: "app=nginx-container-kill"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -116,6 +117,7 @@ jobs:
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "litmus"
+      APP_LABEL: "app=nginx-disk-fill"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -207,6 +209,7 @@ jobs:
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "litmus"
+      APP_LABEL: "app=nginx-node-cpu-hog"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -298,6 +301,7 @@ jobs:
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "litmus"
+      APP_LABEL: "app=nginx-node-io-stress"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -389,6 +393,7 @@ jobs:
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "litmus"
+      APP_LABEL: "app=nginx-node-memory-hog"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -480,6 +485,7 @@ jobs:
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "litmus"
+      APP_LABEL: "app=nginx-pod-autoscaler"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -571,6 +577,7 @@ jobs:
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "litmus"
+      APP_LABEL: "app=nginx-pod-cpu-hog"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -662,6 +669,7 @@ jobs:
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "litmus"
+      APP_LABEL: "app=nginx-pod-delete"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -753,6 +761,7 @@ jobs:
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "litmus"
+      APP_LABEL: "app=nginx-pod-memory-hog"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -844,6 +853,7 @@ jobs:
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "litmus"
+      APP_LABEL: "app=nginx-pod-network-corruption"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -935,6 +945,7 @@ jobs:
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "litmus"
+      APP_LABEL: "app=nginx-pod-network-duplication"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -1026,6 +1037,7 @@ jobs:
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "litmus"
+      APP_LABEL: "app=nginx-pod-network-latency"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -1117,6 +1129,7 @@ jobs:
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "litmus"
+      APP_LABEL: "app=nginx-pod-network-loss"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
