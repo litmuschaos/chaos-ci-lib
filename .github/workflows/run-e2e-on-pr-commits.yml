@@ -105,8 +105,7 @@ jobs:
       - name: Run container-kill experiment
         run: make container-kill
 
-      - name: Uninstall litmus
-        run: make uninstall
+
       
   Disk-Fill_Test:
     runs-on: ubuntu-latest
@@ -197,8 +196,7 @@ jobs:
       - name: Run disk-fill experiment
         run: make disk-fill
 
-      - name: Uninstall litmus
-        run: make uninstall
+
 
   Node_CPU_Hog_Test:
     runs-on: ubuntu-latest
@@ -289,8 +287,7 @@ jobs:
       - name: Run node-cpu-hog experiment
         run: make node-cpu-hog
 
-      - name: Uninstall litmus
-        run: make uninstall
+
 
   Node_IO_Stress_Test:
     runs-on: ubuntu-latest
@@ -381,8 +378,7 @@ jobs:
       - name: Run node-io-stress experiment
         run: make node-io-stress
 
-      - name: Uninstall litmus
-        run: make uninstall
+
 
   Node_Memory_Hog_Test:
     runs-on: ubuntu-latest
@@ -473,8 +469,7 @@ jobs:
       - name: Run node-memory-hog experiment
         run: make node-memory-hog
 
-      - name: Uninstall litmus
-        run: make uninstall        
+        
           
   Pod_Autoscaler_Test:
     runs-on: ubuntu-latest
@@ -565,8 +560,7 @@ jobs:
       - name: Run pod-autoscaler experiment
         run: make pod-autoscaler
 
-      - name: Uninstall litmus
-        run: make uninstall     
+     
 
   Pod_CPU_Hog_Test:
     runs-on: ubuntu-latest
@@ -657,8 +651,7 @@ jobs:
       - name: Run pod-cpu-hog experiment
         run: make pod-cpu-hog
 
-      - name: Uninstall litmus
-        run: make uninstall     
+     
 
   Pod_Delete_Test:
     runs-on: ubuntu-latest
@@ -749,8 +742,7 @@ jobs:
       - name: Run pod-delete experiment
         run: make pod-delete
 
-      - name: Uninstall litmus
-        run: make uninstall     
+     
 
   Pod_Memory_Hog_Test:
     runs-on: ubuntu-latest
@@ -841,8 +833,7 @@ jobs:
       - name: Run pod-memory-hog experiment
         run: make pod-memory-hog
 
-      - name: Uninstall litmus
-        run: make uninstall
+
 
   Pod_Network_Corruption_Test:
     runs-on: ubuntu-latest
@@ -933,8 +924,7 @@ jobs:
       - name: Run pod-network-corruption experiment
         run: make pod-network-corruption
 
-      - name: Uninstall litmus
-        run: make uninstall
+
 
   Pod_Network_Duplication_Test:
     runs-on: ubuntu-latest
@@ -1025,8 +1015,7 @@ jobs:
       - name: Run pod-network-duplication experiment
         run: make pod-network-duplication
 
-      - name: Uninstall litmus
-        run: make uninstall
+
         
   Pod_Network_Latency_Test:
     runs-on: ubuntu-latest
@@ -1117,8 +1106,7 @@ jobs:
       - name: Run pod-network-latency experiment
         run: make pod-network-latency
 
-      - name: Uninstall litmus
-        run: make uninstall
+
         
   Pod_Network_Loss_Test:
     runs-on: ubuntu-latest
@@ -1209,5 +1197,4 @@ jobs:
       - name: Run pod-network-loss experiment
         run: make pod-network-loss
 
-      - name: Uninstall litmus
-        run: make uninstall        
+        
