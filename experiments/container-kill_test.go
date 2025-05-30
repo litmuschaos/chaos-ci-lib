@@ -83,31 +83,52 @@ var _ = Describe("BDD of running container-kill experiment", func() {
 
 			// 2. Create and Run Experiment via SDK
 			By("[SDK Prepare]: Creating and Running Chaos Experiment")
+			klog.Infof("About to create experiment with ID: %s, Name: %s, InfraID: %s", 
+				experimentID, experimentName, experimentsDetails.ConnectedInfraID)
+			klog.Infof("Experiment request details: %+v", experimentRequest)
+			
 			createResponse, err := sdkClient.Experiments().Create(experimentsDetails.LitmusProjectID, *experimentRequest)
             Expect(err).To(BeNil(), "Failed to create experiment via SDK: %v", err)
-			klog.Infof("Created experiment: %s", createResponse)
+			klog.Infof("Created experiment successfully. Response: %s", createResponse)
+			klog.Infof("Experiment creation completed for ID: %s", experimentID)
 			
 			// 3. Get the experiment run ID
             By("[SDK Query]: Polling for experiment run to become available")
+			klog.Infof("Starting to poll for experiment runs for experiment ID: %s", experimentID)
+			klog.Infof("Connected Infrastructure ID: %s", experimentsDetails.ConnectedInfraID)
+			klog.Infof("Project ID: %s", experimentsDetails.LitmusProjectID)
+			
 			var experimentRunID string
-			maxRetries := 10
+			maxRetries := 20
 			found := false
 			
 			for i := 0; i < maxRetries; i++ {
-				time.Sleep(3 * time.Second)
+				klog.Infof("Polling attempt %d/%d for experiment runs...", i+1, maxRetries)
+				time.Sleep(5 * time.Second)
 				
 				listExperimentRunsReq := models.ListExperimentRunRequest{
 					ExperimentIDs: []*string{&experimentID},
 				}
 				
+				klog.Infof("Making ListRuns request with ExperimentIDs: [%s]", experimentID)
 				runsList, err := sdkClient.Experiments().ListRuns(listExperimentRunsReq)
 				if err != nil {
-					klog.Warningf("Error fetching experiment runs: %v", err)
+					klog.Warningf("Error fetching experiment runs on attempt %d: %v", i+1, err)
 					continue
 				}
 				
-				klog.Infof("Attempt %d: Found %d experiment runs", i+1, 
-					len(runsList.ExperimentRuns))
+				klog.Infof("Attempt %d: Found %d experiment runs for experiment %s on infra %s", i+1, 
+					len(runsList.ExperimentRuns), experimentID, experimentsDetails.ConnectedInfraID)
+				
+				// Log details of found experiment runs for debugging
+				if len(runsList.ExperimentRuns) == 0 {
+					klog.Infof("  No experiment runs found in response")
+				} else {
+					for j, run := range runsList.ExperimentRuns {
+						klog.Infof("  Run %d: ID=%s, ExperimentID=%s, Phase=%s", 
+							j+1, run.ExperimentRunID, run.ExperimentID, run.Phase)
+					}
+				}
 				
 				if len(runsList.ExperimentRuns) > 0 {
 					experimentRunID = runsList.ExperimentRuns[0].ExperimentRunID
@@ -116,7 +137,7 @@ var _ = Describe("BDD of running container-kill experiment", func() {
 					break
 				}
 				
-				klog.Infof("Retrying after delay...")
+				klog.Infof("No experiment runs found yet, retrying after delay...")
 			}
 			
 			Expect(found).To(BeTrue(), "No experiment runs found for experiment after %d retries", maxRetries)
