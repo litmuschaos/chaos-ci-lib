@@ -41,9 +41,15 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}    
 
-      #Install and configure a kind cluster
-      - name: Installing KinD cluster for the test
-        run: kind create cluster
+      #Install and configure a minikube cluster
+      - name: Installing Minikube cluster for the test
+        run: |
+          # Install minikube
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+          
+          # Start minikube cluster
+          minikube start --driver=docker --cpus=2 --memory=4096
 
       - name: Configuring and testing the Installation
         run: |
@@ -131,9 +137,15 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}    
 
-      #Install and configure a kind cluster
-      - name: Installing KinD cluster for the test
-        run: kind create cluster
+      #Install and configure a minikube cluster
+      - name: Installing Minikube cluster for the test
+        run: |
+          # Install minikube
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+          
+          # Start minikube cluster
+          minikube start --driver=docker --cpus=2 --memory=4096
 
       - name: Configuring and testing the Installation
         run: |
@@ -213,9 +225,15 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}    
 
-      #Install and configure a kind cluster
-      - name: Installing KinD cluster for the test
-        run: kind create cluster
+      #Install and configure a minikube cluster
+      - name: Installing Minikube cluster for the test
+        run: |
+          # Install minikube
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+          
+          # Start minikube cluster
+          minikube start --driver=docker --cpus=2 --memory=4096
 
       - name: Configuring and testing the Installation
         run: |
@@ -295,9 +313,15 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}    
 
-      #Install and configure a kind cluster
-      - name: Installing KinD cluster for the test
-        run: kind create cluster
+      #Install and configure a minikube cluster
+      - name: Installing Minikube cluster for the test
+        run: |
+          # Install minikube
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+          
+          # Start minikube cluster
+          minikube start --driver=docker --cpus=2 --memory=4096
 
       - name: Configuring and testing the Installation
         run: |
@@ -377,9 +401,15 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}    
 
-      #Install and configure a kind cluster
-      - name: Installing KinD cluster for the test
-        run: kind create cluster
+      #Install and configure a minikube cluster
+      - name: Installing Minikube cluster for the test
+        run: |
+          # Install minikube
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+          
+          # Start minikube cluster
+          minikube start --driver=docker --cpus=2 --memory=4096
 
       - name: Configuring and testing the Installation
         run: |
@@ -459,9 +489,15 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}    
 
-      #Install and configure a kind cluster
-      - name: Installing KinD cluster for the test
-        run: kind create cluster
+      #Install and configure a minikube cluster
+      - name: Installing Minikube cluster for the test
+        run: |
+          # Install minikube
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+          
+          # Start minikube cluster
+          minikube start --driver=docker --cpus=2 --memory=4096
 
       - name: Configuring and testing the Installation
         run: |
@@ -541,9 +577,15 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}    
 
-      #Install and configure a kind cluster
-      - name: Installing KinD cluster for the test
-        run: kind create cluster
+      #Install and configure a minikube cluster
+      - name: Installing Minikube cluster for the test
+        run: |
+          # Install minikube
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+          
+          # Start minikube cluster
+          minikube start --driver=docker --cpus=2 --memory=4096
 
       - name: Configuring and testing the Installation
         run: |
@@ -623,9 +665,15 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}    
 
-      #Install and configure a kind cluster
-      - name: Installing KinD cluster for the test
-        run: kind create cluster
+      #Install and configure a minikube cluster
+      - name: Installing Minikube cluster for the test
+        run: |
+          # Install minikube
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+          
+          # Start minikube cluster
+          minikube start --driver=docker --cpus=2 --memory=4096
 
       - name: Configuring and testing the Installation
         run: |
@@ -705,9 +753,15 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}    
 
-      #Install and configure a kind cluster
-      - name: Installing KinD cluster for the test
-        run: kind create cluster
+      #Install and configure a minikube cluster
+      - name: Installing Minikube cluster for the test
+        run: |
+          # Install minikube
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+          
+          # Start minikube cluster
+          minikube start --driver=docker --cpus=2 --memory=4096
 
       - name: Configuring and testing the Installation
         run: |
@@ -787,9 +841,15 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}    
 
-      #Install and configure a kind cluster
-      - name: Installing KinD cluster for the test
-        run: kind create cluster
+      #Install and configure a minikube cluster
+      - name: Installing Minikube cluster for the test
+        run: |
+          # Install minikube
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+          
+          # Start minikube cluster
+          minikube start --driver=docker --cpus=2 --memory=4096
 
       - name: Configuring and testing the Installation
         run: |
@@ -869,9 +929,15 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}    
 
-      #Install and configure a kind cluster
-      - name: Installing KinD cluster for the test
-        run: kind create cluster
+      #Install and configure a minikube cluster
+      - name: Installing Minikube cluster for the test
+        run: |
+          # Install minikube
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+          
+          # Start minikube cluster
+          minikube start --driver=docker --cpus=2 --memory=4096
 
       - name: Configuring and testing the Installation
         run: |
@@ -951,9 +1017,15 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}    
 
-      #Install and configure a kind cluster
-      - name: Installing KinD cluster for the test
-        run: kind create cluster
+      #Install and configure a minikube cluster
+      - name: Installing Minikube cluster for the test
+        run: |
+          # Install minikube
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+          
+          # Start minikube cluster
+          minikube start --driver=docker --cpus=2 --memory=4096
 
       - name: Configuring and testing the Installation
         run: |
@@ -1033,9 +1105,15 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}    
 
-      #Install and configure a kind cluster
-      - name: Installing KinD cluster for the test
-        run: kind create cluster
+      #Install and configure a minikube cluster
+      - name: Installing Minikube cluster for the test
+        run: |
+          # Install minikube
+          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+          sudo install minikube-linux-amd64 /usr/local/bin/minikube
+          
+          # Start minikube cluster
+          minikube start --driver=docker --cpus=2 --memory=4096
 
       - name: Configuring and testing the Installation
         run: |
