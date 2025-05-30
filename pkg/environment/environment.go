@@ -85,6 +85,10 @@ func GetENV(experimentDetails *types.ExperimentDetails, expName, engineName stri
 	experimentDetails.UseExistingInfra, _ = strconv.ParseBool(Getenv("USE_EXISTING_INFRA", "false"))
 	experimentDetails.ExistingInfraID = Getenv("EXISTING_INFRA_ID", "")
 	
+	// Infrastructure activation control
+	experimentDetails.ActivateInfra, _ = strconv.ParseBool(Getenv("ACTIVATE_INFRA", "true"))
+	experimentDetails.InfraActivationTimeout, _ = strconv.Atoi(Getenv("INFRA_ACTIVATION_TIMEOUT", "5"))
+	
 	// Probe configuration
 	experimentDetails.CreateProbe, _ = strconv.ParseBool(Getenv("LITMUS_CREATE_PROBE", "false"))
 	experimentDetails.ProbeType = Getenv("LITMUS_PROBE_TYPE", "httpProbe")

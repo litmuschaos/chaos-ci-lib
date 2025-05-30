@@ -78,6 +78,10 @@ type ExperimentDetails struct {
 	UseExistingInfra          bool   // Flag to determine if existing infrastructure should be used
 	ExistingInfraID           string // ID of existing infrastructure if UseExistingInfra is true
 	
+	// Infrastructure activation control
+	ActivateInfra             bool   // Flag to determine if infrastructure should be activated
+	InfraActivationTimeout    int    // Timeout in minutes for infrastructure activation
+	
 	// Probe configuration
 	CreateProbe               bool   // Flag to determine if a new probe should be created
 	ProbeType                 string // Type of probe (http, cmd, etc.)

@@ -66,6 +66,8 @@ Chaos CI Lib uses standardized environment variables to configure environments, 
 | `INSTALL_INFRA` | Whether to install infrastructure | `true` | `false` |
 | `USE_EXISTING_INFRA` | Whether to use existing infrastructure | `false` | `true` |
 | `EXISTING_INFRA_ID` | ID of existing infrastructure (required if `USE_EXISTING_INFRA=true`) | `""` | `infra-123456` |
+| `ACTIVATE_INFRA` | Whether to activate infrastructure by deploying manifests | `true` | `false` |
+| `INFRA_ACTIVATION_TIMEOUT` | Timeout in minutes for infrastructure activation | `5` | `10` |
 | `INFRA_NAME` | Name for the infrastructure | `ci-infra-{expName}` | `my-k8s-infra` |
 | `INFRA_NAMESPACE` | Kubernetes namespace for infrastructure | `litmus` | `chaos-testing` |
 | `INFRA_SCOPE` | Scope of infrastructure | `namespace` | `cluster` |
