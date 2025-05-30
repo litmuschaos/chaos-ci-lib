@@ -37,6 +37,8 @@ jobs:
       LITMUS_PROBE_INTERVAL: "10s"
       LITMUS_PROBE_ATTEMPTS: "1"
       LITMUS_PROBE_RESPONSE_CODE: "200"
+      SOCKET_PATH: "/run/containerd/containerd.sock"
+      CONTAINER_RUNTIME: "containerd"
     steps:
       
       - uses: actions/checkout@v2

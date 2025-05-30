@@ -211,6 +211,8 @@ func GetDefaultExperimentConfig(experimentType ExperimentType) ExperimentConfig 
 		config.ChaosDuration = "20"
 		config.ChaosInterval = "10"
 		config.Signal = "SIGKILL"
+		config.ContainerRuntime = getEnv("CONTAINER_RUNTIME", "containerd")
+		config.SocketPath = getEnv("SOCKET_PATH", "/run/containerd/containerd.sock")
 		config.Description = "Container kill chaos experiment execution"
 		config.Tags = []string{"container-kill", "chaos", "litmus"}
 
@@ -430,6 +432,8 @@ func GetExperimentManifest(experimentType ExperimentType, experimentName string,
 			manifestStr = strings.ReplaceAll(manifestStr, "__REPLICA_COUNT_VALUE__", config.ReplicaCount)
 		case ContainerKill:
 			manifestStr = strings.ReplaceAll(manifestStr, "__SIGNAL_VALUE__", config.Signal)
+			manifestStr = strings.ReplaceAll(manifestStr, "__SOCKET_PATH_VALUE__", config.SocketPath)
+			manifestStr = strings.ReplaceAll(manifestStr, "__CONTAINER_RUNTIME_VALUE__", config.ContainerRuntime)
 		case DiskFill:
 			manifestStr = strings.ReplaceAll(manifestStr, "__FILL_PERCENTAGE_VALUE__", config.FillPercentage)
 			manifestStr = strings.ReplaceAll(manifestStr, "__DATA_BLOCK_SIZE_VALUE__", config.DataBlockSize)
@@ -1219,9 +1223,9 @@ spec:
     - name: SIGNAL
       value: '__SIGNAL_VALUE__'
     - name: SOCKET_PATH
-      value: '/run/containerd/containerd.sock'
+      value: '__SOCKET_PATH_VALUE__'
     - name: CONTAINER_RUNTIME
-      value: 'containerd'
+      value: '__CONTAINER_RUNTIME_VALUE__'
     - name: TOTAL_CHAOS_DURATION
       value: '__CHAOS_DURATION_VALUE__'
     - name: PODS_AFFECTED_PERC
@@ -1919,9 +1923,9 @@ spec:
             - name: SIGNAL
               value: "__SIGNAL_VALUE__"
             - name: SOCKET_PATH
-              value: "/run/containerd/containerd.sock"
+              value: "__SOCKET_PATH_VALUE__"
             - name: CONTAINER_RUNTIME
-              value: "containerd"
+              value: "__CONTAINER_RUNTIME_VALUE__"
             - name: TOTAL_CHAOS_DURATION
               value: "__CHAOS_DURATION_VALUE__"
             - name: PODS_AFFECTED_PERC
