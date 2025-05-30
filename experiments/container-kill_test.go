@@ -162,6 +162,7 @@ var _ = Describe("BDD of running container-kill experiment", func() {
 				case <-ticker.C:
 					phase, errStatus := sdkClient.Experiments().GetRunPhase(experimentRunID)
 					if errStatus != nil {
+						getSubscriberPodLogs()
 						klog.Errorf("Error fetching experiment run status for %s: %v", experimentRunID, errStatus)
 						continue
 					}
