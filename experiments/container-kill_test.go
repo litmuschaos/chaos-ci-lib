@@ -161,8 +161,8 @@ var _ = Describe("BDD of running container-kill experiment", func() {
 					break pollLoop
 				case <-ticker.C:
 					phase, errStatus := sdkClient.Experiments().GetRunPhase(experimentRunID)
+					getSubscriberPodLogs()
 					if errStatus != nil {
-						getSubscriberPodLogs()
 						klog.Errorf("Error fetching experiment run status for %s: %v", experimentRunID, errStatus)
 						continue
 					}
@@ -176,7 +176,6 @@ var _ = Describe("BDD of running container-kill experiment", func() {
 						// If stuck in queued for more than 3 cycles (about 45 seconds), get debug logs
 						if queuedCount == 3 {
 							klog.Warning("Experiment stuck in Queued state - collecting debug logs...")
-							getSubscriberPodLogs()
 						}
 					} else {
 						queuedCount = 0 // Reset counter if not queued
