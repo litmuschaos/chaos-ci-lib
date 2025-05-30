@@ -118,7 +118,7 @@ type ExperimentConfig struct {
 func GetDefaultExperimentConfig(experimentType ExperimentType) ExperimentConfig {
 	// Base config with common defaults
 	config := ExperimentConfig{
-		AppNamespace:       "default",
+		AppNamespace:       "litmus",
 		AppLabel:           "app=nginx",
 		AppKind:            "deployment",
 		PodsAffectedPerc:   "",

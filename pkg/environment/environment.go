@@ -13,7 +13,7 @@ func GetENV(experimentDetails *types.ExperimentDetails, expName, engineName stri
 	experimentDetails.EngineName = engineName
 	experimentDetails.OperatorName = Getenv("OPERATOR_NAME", "chaos-operator-ce")
 	experimentDetails.ChaosNamespace = Getenv("CHAOS_NAMESPACE", "default")
-	experimentDetails.AppNS = Getenv("APP_NS", "default")
+	experimentDetails.AppNS = Getenv("APP_NS", "litmus")
 	experimentDetails.AppLabel = Getenv("APP_LABEL", "app=nginx")
 	experimentDetails.AppKind = Getenv("APP_KIND", "deployment")
 	experimentDetails.JobCleanUpPolicy = Getenv("JOB_CLEANUP_POLICY", "retain")
