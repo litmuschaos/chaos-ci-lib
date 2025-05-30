@@ -297,7 +297,7 @@ jobs:
       LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
-      APP_NS: "default"
+      APP_NS: "litmus"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -309,10 +309,10 @@ jobs:
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
       LITMUS_USE_EXISTING_PROBE: "false"
-      LITMUS_PROBE_NAME: "ci-http-probe-2"
+      LITMUS_PROBE_NAME: "ci-http-probe-node-io-stress"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
-      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_URL: "http://nginx-service-node-io-stress.litmus.svc.cluster.local:80"
       LITMUS_PROBE_TIMEOUT: "30s"
       LITMUS_PROBE_INTERVAL: "10s"
       LITMUS_PROBE_ATTEMPTS: "1"
@@ -359,12 +359,20 @@ jobs:
 
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-node-io-stress.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-node-io-stress/g' nginx-node-io-stress.yml
+          sed -i 's/app: nginx/app: nginx-node-io-stress/g' nginx-node-io-stress.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-node-io-stress.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
           
           # Create a service for nginx to enable probe connectivity
-          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
-          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
+          kubectl expose deployment nginx-node-io-stress --port=80 --target-port=80 --name=nginx-service-node-io-stress --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-node-io-stress --namespace litmus --timeout=30s
 
       - name: Run node-io-stress experiment
         run: make node-io-stress
@@ -380,7 +388,7 @@ jobs:
       LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
-      APP_NS: "default"
+      APP_NS: "litmus"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -392,10 +400,10 @@ jobs:
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
       LITMUS_USE_EXISTING_PROBE: "false"
-      LITMUS_PROBE_NAME: "ci-http-probe-2"
+      LITMUS_PROBE_NAME: "ci-http-probe-node-memory-hog"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
-      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_URL: "http://nginx-service-node-memory-hog.litmus.svc.cluster.local:80"
       LITMUS_PROBE_TIMEOUT: "30s"
       LITMUS_PROBE_INTERVAL: "10s"
       LITMUS_PROBE_ATTEMPTS: "1"
@@ -442,12 +450,20 @@ jobs:
 
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-node-memory-hog.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-node-memory-hog/g' nginx-node-memory-hog.yml
+          sed -i 's/app: nginx/app: nginx-node-memory-hog/g' nginx-node-memory-hog.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-node-memory-hog.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
           
           # Create a service for nginx to enable probe connectivity
-          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
-          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
+          kubectl expose deployment nginx-node-memory-hog --port=80 --target-port=80 --name=nginx-service-node-memory-hog --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-node-memory-hog --namespace litmus --timeout=30s
 
       - name: Run node-memory-hog experiment
         run: make node-memory-hog
@@ -463,7 +479,7 @@ jobs:
       LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
-      APP_NS: "default"
+      APP_NS: "litmus"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -475,10 +491,10 @@ jobs:
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
       LITMUS_USE_EXISTING_PROBE: "false"
-      LITMUS_PROBE_NAME: "ci-http-probe-2"
+      LITMUS_PROBE_NAME: "ci-http-probe-pod-autoscaler"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
-      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_URL: "http://nginx-service-pod-autoscaler.litmus.svc.cluster.local:80"
       LITMUS_PROBE_TIMEOUT: "30s"
       LITMUS_PROBE_INTERVAL: "10s"
       LITMUS_PROBE_ATTEMPTS: "1"
@@ -525,12 +541,20 @@ jobs:
 
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-pod-autoscaler.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-pod-autoscaler/g' nginx-pod-autoscaler.yml
+          sed -i 's/app: nginx/app: nginx-pod-autoscaler/g' nginx-pod-autoscaler.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-pod-autoscaler.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
           
           # Create a service for nginx to enable probe connectivity
-          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
-          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
+          kubectl expose deployment nginx-pod-autoscaler --port=80 --target-port=80 --name=nginx-service-pod-autoscaler --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-pod-autoscaler --namespace litmus --timeout=30s
 
       - name: Run pod-autoscaler experiment
         run: make pod-autoscaler
@@ -546,7 +570,7 @@ jobs:
       LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
-      APP_NS: "default"
+      APP_NS: "litmus"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -558,10 +582,10 @@ jobs:
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
       LITMUS_USE_EXISTING_PROBE: "false"
-      LITMUS_PROBE_NAME: "ci-http-probe-2"
+      LITMUS_PROBE_NAME: "ci-http-probe-pod-cpu-hog"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
-      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_URL: "http://nginx-service-pod-cpu-hog.litmus.svc.cluster.local:80"
       LITMUS_PROBE_TIMEOUT: "30s"
       LITMUS_PROBE_INTERVAL: "10s"
       LITMUS_PROBE_ATTEMPTS: "1"
@@ -608,12 +632,20 @@ jobs:
 
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-pod-cpu-hog.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-pod-cpu-hog/g' nginx-pod-cpu-hog.yml
+          sed -i 's/app: nginx/app: nginx-pod-cpu-hog/g' nginx-pod-cpu-hog.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-pod-cpu-hog.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
           
           # Create a service for nginx to enable probe connectivity
-          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
-          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
+          kubectl expose deployment nginx-pod-cpu-hog --port=80 --target-port=80 --name=nginx-service-pod-cpu-hog --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-pod-cpu-hog --namespace litmus --timeout=30s
 
       - name: Run pod-cpu-hog experiment
         run: make pod-cpu-hog
@@ -629,7 +661,7 @@ jobs:
       LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
-      APP_NS: "default"
+      APP_NS: "litmus"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -641,10 +673,10 @@ jobs:
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
       LITMUS_USE_EXISTING_PROBE: "false"
-      LITMUS_PROBE_NAME: "ci-http-probe-2"
+      LITMUS_PROBE_NAME: "ci-http-probe-pod-delete"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
-      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_URL: "http://nginx-service-pod-delete.litmus.svc.cluster.local:80"
       LITMUS_PROBE_TIMEOUT: "30s"
       LITMUS_PROBE_INTERVAL: "10s"
       LITMUS_PROBE_ATTEMPTS: "1"
@@ -691,12 +723,20 @@ jobs:
 
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-pod-delete.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-pod-delete/g' nginx-pod-delete.yml
+          sed -i 's/app: nginx/app: nginx-pod-delete/g' nginx-pod-delete.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-pod-delete.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
           
           # Create a service for nginx to enable probe connectivity
-          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
-          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
+          kubectl expose deployment nginx-pod-delete --port=80 --target-port=80 --name=nginx-service-pod-delete --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-pod-delete --namespace litmus --timeout=30s
 
       - name: Run pod-delete experiment
         run: make pod-delete
@@ -712,7 +752,7 @@ jobs:
       LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
-      APP_NS: "default"
+      APP_NS: "litmus"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -724,10 +764,10 @@ jobs:
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
       LITMUS_USE_EXISTING_PROBE: "false"
-      LITMUS_PROBE_NAME: "ci-http-probe-2"
+      LITMUS_PROBE_NAME: "ci-http-probe-pod-memory-hog"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
-      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_URL: "http://nginx-service-pod-memory-hog.litmus.svc.cluster.local:80"
       LITMUS_PROBE_TIMEOUT: "30s"
       LITMUS_PROBE_INTERVAL: "10s"
       LITMUS_PROBE_ATTEMPTS: "1"
@@ -774,12 +814,20 @@ jobs:
 
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-pod-memory-hog.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-pod-memory-hog/g' nginx-pod-memory-hog.yml
+          sed -i 's/app: nginx/app: nginx-pod-memory-hog/g' nginx-pod-memory-hog.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-pod-memory-hog.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
           
           # Create a service for nginx to enable probe connectivity
-          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
-          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
+          kubectl expose deployment nginx-pod-memory-hog --port=80 --target-port=80 --name=nginx-service-pod-memory-hog --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-pod-memory-hog --namespace litmus --timeout=30s
 
       - name: Run pod-memory-hog experiment
         run: make pod-memory-hog
@@ -795,7 +843,7 @@ jobs:
       LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
-      APP_NS: "default"
+      APP_NS: "litmus"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -807,10 +855,10 @@ jobs:
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
       LITMUS_USE_EXISTING_PROBE: "false"
-      LITMUS_PROBE_NAME: "ci-http-probe-2"
+      LITMUS_PROBE_NAME: "ci-http-probe-pod-network-corruption"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
-      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_URL: "http://nginx-service-pod-network-corruption.litmus.svc.cluster.local:80"
       LITMUS_PROBE_TIMEOUT: "30s"
       LITMUS_PROBE_INTERVAL: "10s"
       LITMUS_PROBE_ATTEMPTS: "1"
@@ -857,12 +905,20 @@ jobs:
 
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-pod-network-corruption.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-pod-network-corruption/g' nginx-pod-network-corruption.yml
+          sed -i 's/app: nginx/app: nginx-pod-network-corruption/g' nginx-pod-network-corruption.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-pod-network-corruption.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
           
           # Create a service for nginx to enable probe connectivity
-          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
-          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
+          kubectl expose deployment nginx-pod-network-corruption --port=80 --target-port=80 --name=nginx-service-pod-network-corruption --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-pod-network-corruption --namespace litmus --timeout=30s
 
       - name: Run pod-network-corruption experiment
         run: make pod-network-corruption
@@ -878,7 +934,7 @@ jobs:
       LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
-      APP_NS: "default"
+      APP_NS: "litmus"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -890,10 +946,10 @@ jobs:
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
       LITMUS_USE_EXISTING_PROBE: "false"
-      LITMUS_PROBE_NAME: "ci-http-probe-2"
+      LITMUS_PROBE_NAME: "ci-http-probe-pod-network-duplication"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
-      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_URL: "http://nginx-service-pod-network-duplication.litmus.svc.cluster.local:80"
       LITMUS_PROBE_TIMEOUT: "30s"
       LITMUS_PROBE_INTERVAL: "10s"
       LITMUS_PROBE_ATTEMPTS: "1"
@@ -940,12 +996,20 @@ jobs:
 
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-pod-network-duplication.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-pod-network-duplication/g' nginx-pod-network-duplication.yml
+          sed -i 's/app: nginx/app: nginx-pod-network-duplication/g' nginx-pod-network-duplication.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-pod-network-duplication.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
           
           # Create a service for nginx to enable probe connectivity
-          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
-          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
+          kubectl expose deployment nginx-pod-network-duplication --port=80 --target-port=80 --name=nginx-service-pod-network-duplication --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-pod-network-duplication --namespace litmus --timeout=30s
 
       - name: Run pod-network-duplication experiment
         run: make pod-network-duplication
@@ -961,7 +1025,7 @@ jobs:
       LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
-      APP_NS: "default"
+      APP_NS: "litmus"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -973,10 +1037,10 @@ jobs:
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
       LITMUS_USE_EXISTING_PROBE: "false"
-      LITMUS_PROBE_NAME: "ci-http-probe-2"
+      LITMUS_PROBE_NAME: "ci-http-probe-pod-network-latency"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
-      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_URL: "http://nginx-service-pod-network-latency.litmus.svc.cluster.local:80"
       LITMUS_PROBE_TIMEOUT: "30s"
       LITMUS_PROBE_INTERVAL: "10s"
       LITMUS_PROBE_ATTEMPTS: "1"
@@ -1023,12 +1087,20 @@ jobs:
 
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-pod-network-latency.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-pod-network-latency/g' nginx-pod-network-latency.yml
+          sed -i 's/app: nginx/app: nginx-pod-network-latency/g' nginx-pod-network-latency.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-pod-network-latency.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
           
           # Create a service for nginx to enable probe connectivity
-          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
-          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
+          kubectl expose deployment nginx-pod-network-latency --port=80 --target-port=80 --name=nginx-service-pod-network-latency --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-pod-network-latency --namespace litmus --timeout=30s
 
       - name: Run pod-network-latency experiment
         run: make pod-network-latency
@@ -1044,7 +1116,7 @@ jobs:
       LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
       LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
       LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
-      APP_NS: "default"
+      APP_NS: "litmus"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -1056,10 +1128,10 @@ jobs:
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
       LITMUS_USE_EXISTING_PROBE: "false"
-      LITMUS_PROBE_NAME: "ci-http-probe-2"
+      LITMUS_PROBE_NAME: "ci-http-probe-pod-network-loss"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
-      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_URL: "http://nginx-service-pod-network-loss.litmus.svc.cluster.local:80"
       LITMUS_PROBE_TIMEOUT: "30s"
       LITMUS_PROBE_INTERVAL: "10s"
       LITMUS_PROBE_ATTEMPTS: "1"
@@ -1106,12 +1178,20 @@ jobs:
 
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-pod-network-loss.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-pod-network-loss/g' nginx-pod-network-loss.yml
+          sed -i 's/app: nginx/app: nginx-pod-network-loss/g' nginx-pod-network-loss.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-pod-network-loss.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
           
           # Create a service for nginx to enable probe connectivity
-          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
-          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
+          kubectl expose deployment nginx-pod-network-loss --port=80 --target-port=80 --name=nginx-service-pod-network-loss --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-pod-network-loss --namespace litmus --timeout=30s
 
       - name: Run pod-network-loss experiment
         run: make pod-network-loss
