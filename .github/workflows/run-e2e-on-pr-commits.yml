@@ -12,11 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: "http://localhost:9091"
-      LITMUS_USERNAME: "admin"
-      LITMUS_PASSWORD: "litmus"
-      LITMUS_PROJECT_ID: "admin-project"
-      APP_NS: "default"
+      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
+      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
+      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
+      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
+      APP_NS: "litmus"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -28,10 +28,10 @@ jobs:
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
       LITMUS_USE_EXISTING_PROBE: "false"
-      LITMUS_PROBE_NAME: "ci-http-probe"
+      LITMUS_PROBE_NAME: "ci-http-probe-container-kill"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
-      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_URL: "http://nginx-service-container-kill.litmus.svc.cluster.local:80"
       LITMUS_PROBE_TIMEOUT: "30s"
       LITMUS_PROBE_INTERVAL: "10s"
       LITMUS_PROBE_ATTEMPTS: "1"
@@ -86,12 +86,20 @@ jobs:
 
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-container-kill.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-container-kill/g' nginx-container-kill.yml
+          sed -i 's/app: nginx/app: nginx-container-kill/g' nginx-container-kill.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-container-kill.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
           
           # Create a service for nginx to enable probe connectivity
-          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
-          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
+          kubectl expose deployment nginx-container-kill --port=80 --target-port=80 --name=nginx-service-container-kill --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-container-kill --namespace litmus --timeout=30s
 
       - name: Run container-kill experiment
         run: make container-kill
@@ -103,11 +111,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: "http://localhost:9091"
-      LITMUS_USERNAME: "admin"
-      LITMUS_PASSWORD: "litmus"
-      LITMUS_PROJECT_ID: "admin-project"
-      APP_NS: "default"
+      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
+      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
+      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
+      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
+      APP_NS: "litmus"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -119,10 +127,10 @@ jobs:
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
       LITMUS_USE_EXISTING_PROBE: "false"
-      LITMUS_PROBE_NAME: "ci-http-probe-2"
+      LITMUS_PROBE_NAME: "ci-http-probe-disk-fill"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
-      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_URL: "http://nginx-service-disk-fill.litmus.svc.cluster.local:80"
       LITMUS_PROBE_TIMEOUT: "30s"
       LITMUS_PROBE_INTERVAL: "10s"
       LITMUS_PROBE_ATTEMPTS: "1"
@@ -169,12 +177,20 @@ jobs:
 
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-disk-fill.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-disk-fill/g' nginx-disk-fill.yml
+          sed -i 's/app: nginx/app: nginx-disk-fill/g' nginx-disk-fill.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-disk-fill.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
           
           # Create a service for nginx to enable probe connectivity
-          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
-          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
+          kubectl expose deployment nginx-disk-fill --port=80 --target-port=80 --name=nginx-service-disk-fill --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-disk-fill --namespace litmus --timeout=30s
 
       - name: Run disk-fill experiment
         run: make disk-fill
@@ -186,11 +202,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: "http://localhost:9091"
-      LITMUS_USERNAME: "admin"
-      LITMUS_PASSWORD: "litmus"
-      LITMUS_PROJECT_ID: "admin-project"
-      APP_NS: "default"
+      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
+      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
+      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
+      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
+      APP_NS: "litmus"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
       CREATE_ENV: "true"
@@ -202,10 +218,10 @@ jobs:
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
       LITMUS_USE_EXISTING_PROBE: "false"
-      LITMUS_PROBE_NAME: "ci-http-probe-2"
+      LITMUS_PROBE_NAME: "ci-http-probe-node-cpu-hog"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
-      LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
+      LITMUS_PROBE_URL: "http://nginx-service-node-cpu-hog.litmus.svc.cluster.local:80"
       LITMUS_PROBE_TIMEOUT: "30s"
       LITMUS_PROBE_INTERVAL: "10s"
       LITMUS_PROBE_ATTEMPTS: "1"
@@ -252,27 +268,35 @@ jobs:
 
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-node-cpu-hog.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-node-cpu-hog/g' nginx-node-cpu-hog.yml
+          sed -i 's/app: nginx/app: nginx-node-cpu-hog/g' nginx-node-cpu-hog.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-node-cpu-hog.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
           
           # Create a service for nginx to enable probe connectivity
-          kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
-          kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
+          kubectl expose deployment nginx-node-cpu-hog --port=80 --target-port=80 --name=nginx-service-node-cpu-hog --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-node-cpu-hog --namespace litmus --timeout=30s
 
       - name: Run node-cpu-hog experiment
         run: make node-cpu-hog
 
       - name: Uninstall litmus
-        run: make uninstall           
-        
+        run: make uninstall
+
   Node_IO_Stress_Test:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: "http://localhost:9091"
-      LITMUS_USERNAME: "admin"
-      LITMUS_PASSWORD: "litmus"
-      LITMUS_PROJECT_ID: "admin-project"
+      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
+      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
+      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
+      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -352,10 +376,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: "http://localhost:9091"
-      LITMUS_USERNAME: "admin"
-      LITMUS_PASSWORD: "litmus"
-      LITMUS_PROJECT_ID: "admin-project"
+      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
+      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
+      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
+      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -435,10 +459,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: "http://localhost:9091"
-      LITMUS_USERNAME: "admin"
-      LITMUS_PASSWORD: "litmus"
-      LITMUS_PROJECT_ID: "admin-project"
+      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
+      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
+      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
+      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -518,10 +542,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: "http://localhost:9091"
-      LITMUS_USERNAME: "admin"
-      LITMUS_PASSWORD: "litmus"
-      LITMUS_PROJECT_ID: "admin-project"
+      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
+      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
+      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
+      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -601,10 +625,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: "http://localhost:9091"
-      LITMUS_USERNAME: "admin"
-      LITMUS_PASSWORD: "litmus"
-      LITMUS_PROJECT_ID: "admin-project"
+      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
+      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
+      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
+      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -684,10 +708,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: "http://localhost:9091"
-      LITMUS_USERNAME: "admin"
-      LITMUS_PASSWORD: "litmus"
-      LITMUS_PROJECT_ID: "admin-project"
+      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
+      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
+      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
+      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -767,10 +791,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: "http://localhost:9091"
-      LITMUS_USERNAME: "admin"
-      LITMUS_PASSWORD: "litmus"
-      LITMUS_PROJECT_ID: "admin-project"
+      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
+      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
+      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
+      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -850,10 +874,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: "http://localhost:9091"
-      LITMUS_USERNAME: "admin"
-      LITMUS_PASSWORD: "litmus"
-      LITMUS_PROJECT_ID: "admin-project"
+      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
+      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
+      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
+      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -933,10 +957,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: "http://localhost:9091"
-      LITMUS_USERNAME: "admin"
-      LITMUS_PASSWORD: "litmus"
-      LITMUS_PROJECT_ID: "admin-project"
+      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
+      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
+      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
+      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -1016,10 +1040,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: "http://localhost:9091"
-      LITMUS_USERNAME: "admin"
-      LITMUS_PASSWORD: "litmus"
-      LITMUS_PROJECT_ID: "admin-project"
+      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
+      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
+      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
+      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
