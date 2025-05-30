@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
-      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
-      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
-      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -28,7 +28,7 @@ jobs:
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
       LITMUS_USE_EXISTING_PROBE: "false"
-      LITMUS_PROBE_NAME: "ci-http-probe-2"
+      LITMUS_PROBE_NAME: "ci-http-probe"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
       LITMUS_PROBE_URL: "http://nginx-service.default.svc.cluster.local:80"
@@ -103,10 +103,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
-      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
-      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
-      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -186,10 +186,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
-      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
-      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
-      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -269,10 +269,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
-      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
-      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
-      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -352,10 +352,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
-      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
-      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
-      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -435,10 +435,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
-      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
-      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
-      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -518,10 +518,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
-      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
-      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
-      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -601,10 +601,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
-      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
-      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
-      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -684,10 +684,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
-      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
-      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
-      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -767,10 +767,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
-      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
-      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
-      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -850,10 +850,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
-      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
-      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
-      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -933,10 +933,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
-      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
-      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
-      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
@@ -1016,10 +1016,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
-      LITMUS_ENDPOINT: ${{ secrets.LITMUS_ENDPOINT }}
-      LITMUS_USERNAME: ${{ secrets.LITMUS_USERNAME }}
-      LITMUS_PASSWORD: ${{ secrets.LITMUS_PASSWORD }}
-      LITMUS_PROJECT_ID: ${{ secrets.LITMUS_PROJECT_ID }}
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
       APP_NS: "default"
       INSTALL_INFRA: "true"
       ACTIVATE_INFRA: "true"
