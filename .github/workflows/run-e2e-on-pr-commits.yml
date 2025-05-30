@@ -29,7 +29,7 @@ jobs:
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
       LITMUS_USE_EXISTING_PROBE: "false"
-      LITMUS_PROBE_NAME: "ci-http-probe-container-kill"
+      LITMUS_PROBE_NAME: "ci-http-probe-9-container-kill"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
       LITMUS_PROBE_URL: "http://nginx-service-container-kill.litmus.svc.cluster.local:80"
