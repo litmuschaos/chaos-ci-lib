@@ -197,19 +197,31 @@ func ActivateInfrastructure(experimentsDetails *types.ExperimentDetails, sdkClie
 		return nil
 	}
 
-	// Get the infrastructure manifest using the SDK
+	// Step 1: Ensure namespace exists (usually already exists)
+	err := ensureNamespaceExists(experimentsDetails.InfraNamespace)
+	if err != nil {
+		return fmt.Errorf("failed to ensure namespace exists: %v", err)
+	}
+
+	// Step 2: Apply Litmus CRDs (required for infrastructure components)
+	err = applyLitmusCRDs()
+	if err != nil {
+		return fmt.Errorf("failed to apply Litmus CRDs: %v", err)
+	}
+
+	// Step 3: Get the infrastructure manifest using the SDK
 	manifestContent, err := getInfrastructureManifest(experimentsDetails, sdkClient)
 	if err != nil {
 		return fmt.Errorf("failed to get infrastructure manifest: %v", err)
 	}
 
-	// Apply the infrastructure manifest to the cluster
+	// Step 4: Apply the infrastructure manifest to the cluster
 	err = applyInfrastructureManifest(manifestContent, experimentsDetails)
 	if err != nil {
 		return fmt.Errorf("failed to apply infrastructure manifest: %v", err)
 	}
 
-	// Wait for infrastructure to become active
+	// Step 5: Wait for infrastructure to become active
 	err = waitForInfrastructureActivation(experimentsDetails, sdkClient)
 	if err != nil {
 		return fmt.Errorf("infrastructure activation timeout: %v", err)
@@ -219,17 +231,75 @@ func ActivateInfrastructure(experimentsDetails *types.ExperimentDetails, sdkClie
 	return nil
 }
 
+// ensureNamespaceExists ensures the specified namespace exists
+func ensureNamespaceExists(namespace string) error {
+	klog.Infof("Ensuring namespace '%s' exists...", namespace)
+	
+	// Check if namespace already exists
+	command := []string{"get", "namespace", namespace}
+	err := pkg.Kubectl(command...)
+	if err == nil {
+		klog.Infof("Namespace '%s' already exists", namespace)
+		return nil
+	}
+	
+	// Create namespace if it doesn't exist
+	klog.Infof("Creating namespace '%s'...", namespace)
+	command = []string{"create", "namespace", namespace}
+	err = pkg.Kubectl(command...)
+	if err != nil {
+		return fmt.Errorf("failed to create namespace %s: %v", namespace, err)
+	}
+	
+	klog.Infof("Successfully created namespace '%s'", namespace)
+	return nil
+}
+
+// applyLitmusCRDs applies the Litmus CRDs required for infrastructure components
+func applyLitmusCRDs() error {
+	klog.Info("Applying Litmus CRDs...")
+	
+	// Use the CRD URL from the UI instructions
+	crdURL := "https://raw.githubusercontent.com/litmuschaos/litmus/master/mkdocs/docs/3.6.1/litmus-portal-crds-3.6.1.yml"
+	
+	// Apply CRDs directly from URL
+	command := []string{"apply", "-f", crdURL}
+	err := pkg.Kubectl(command...)
+	if err != nil {
+		return fmt.Errorf("failed to apply Litmus CRDs from %s: %v", crdURL, err)
+	}
+	
+	klog.Info("Successfully applied Litmus CRDs")
+	
+	// Wait a moment for CRDs to be registered
+	klog.Info("Waiting for CRDs to be registered...")
+	time.Sleep(5 * time.Second)
+	
+	return nil
+}
+
 // getInfrastructureManifest gets the infrastructure manifest using the SDK
 func getInfrastructureManifest(experimentsDetails *types.ExperimentDetails, sdkClient sdk.Client) ([]byte, error) {
-	klog.Info("Getting infrastructure manifest via GraphQL...")
+	klog.Info("Getting infrastructure manifest...")
 	
-	// Use the GraphQL approach directly as shown by the user
-	manifestContent, err := getInfrastructureManifestViaGraphQL(experimentsDetails, sdkClient)
+	// Try URL-based approach first (should include CRDs)
+	klog.Info("Trying URL-based manifest download (includes CRDs)...")
+	manifestContent, err := getInfrastructureManifestViaURL(experimentsDetails, sdkClient)
+	if err == nil {
+		klog.Info("Successfully retrieved complete infrastructure manifest via URL")
+		return manifestContent, nil
+	}
+	
+	klog.Warningf("Failed to get manifest via URL: %v", err)
+	klog.Info("Falling back to GraphQL approach...")
+	
+	// Fallback to GraphQL approach (may not include CRDs)
+	manifestContent, err = getInfrastructureManifestViaGraphQL(experimentsDetails, sdkClient)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get manifest via GraphQL: %v", err)
+		return nil, fmt.Errorf("both URL and GraphQL approaches failed: %v", err)
 	}
 
-	klog.Info("Successfully retrieved infrastructure manifest")
+	klog.Info("Successfully retrieved infrastructure manifest via GraphQL")
 	return manifestContent, nil
 }
 
