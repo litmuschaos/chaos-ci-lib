@@ -150,6 +150,8 @@ var _ = Describe("BDD of running container-kill experiment", func() {
 			ticker := time.NewTicker(time.Duration(experimentsDetails.ExperimentPollingInterval) * time.Second)
 			defer ticker.Stop()
 			
+			queuedCount := 0 // Track how long experiment stays in queued state
+			
 		pollLoop:
 			for {
 				select {
@@ -164,6 +166,21 @@ var _ = Describe("BDD of running container-kill experiment", func() {
 						continue
 					}
 					klog.Infof("Experiment Run %s current phase: %s", experimentRunID, phase)
+					
+					// Check if experiment is stuck in queued state
+					if phase == "Queued" {
+						queuedCount++
+						klog.Infof("Experiment has been in Queued state for %d polling cycles", queuedCount)
+						
+						// If stuck in queued for more than 3 cycles (about 45 seconds), get debug logs
+						if queuedCount == 3 {
+							klog.Warning("Experiment stuck in Queued state - collecting debug logs...")
+							getSubscriberPodLogs()
+						}
+					} else {
+						queuedCount = 0 // Reset counter if not queued
+					}
+					
 					finalPhases := []string{"Completed", "Completed_With_Error", "Failed", "Error", "Stopped", "Skipped", "Aborted", "Timeout", "Terminated"}
 					if pkg.ContainsString(finalPhases, phase) {
 						finalPhase = phase
@@ -188,3 +205,52 @@ var _ = Describe("BDD of running container-kill experiment", func() {
 		})
 	})
 })
+
+// Helper function to get pod logs for debugging
+func getSubscriberPodLogs() {
+	klog.Info("=== DEBUGGING: Getting subscriber pod logs ===")
+	
+	// Get subscriber pod logs
+	klog.Info("Getting subscriber pod logs...")
+	err := pkg.Kubectl("logs", "-n", "litmus", "-l", "app=subscriber", "--tail=50")
+	if err != nil {
+		klog.Errorf("Failed to get subscriber logs: %v", err)
+	}
+	
+	// Get workflow controller logs
+	klog.Info("Getting workflow controller logs...")
+	err = pkg.Kubectl("logs", "-n", "litmus", "-l", "app=workflow-controller", "--tail=50")
+	if err != nil {
+		klog.Errorf("Failed to get workflow controller logs: %v", err)
+	}
+	
+	// Get chaos operator logs
+	klog.Info("Getting chaos operator logs...")
+	err = pkg.Kubectl("logs", "-n", "litmus", "-l", "app=chaos-operator-ce", "--tail=50")
+	if err != nil {
+		klog.Errorf("Failed to get chaos operator logs: %v", err)
+	}
+	
+	// Get all pods status in litmus namespace
+	klog.Info("Getting litmus namespace pods status...")
+	err = pkg.Kubectl("get", "pods", "-n", "litmus", "-o", "wide")
+	if err != nil {
+		klog.Errorf("Failed to get pods status: %v", err)
+	}
+	
+	// Get workflows in litmus namespace
+	klog.Info("Getting workflows in litmus namespace...")
+	err = pkg.Kubectl("get", "workflows", "-n", "litmus")
+	if err != nil {
+		klog.Errorf("Failed to get workflows: %v", err)
+	}
+	
+	// Get chaos engines in litmus namespace
+	klog.Info("Getting chaos engines in litmus namespace...")
+	err = pkg.Kubectl("get", "chaosengines", "-n", "litmus")
+	if err != nil {
+		klog.Errorf("Failed to get chaos engines: %v", err)
+	}
+	
+	klog.Info("=== END DEBUGGING LOGS ===")
+}
