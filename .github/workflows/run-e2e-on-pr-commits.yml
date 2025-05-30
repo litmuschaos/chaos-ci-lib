@@ -26,6 +26,7 @@ jobs:
       INFRA_SCOPE: "namespace"
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
       LITMUS_PROBE_NAME: "ci-http-probe"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
@@ -115,6 +116,7 @@ jobs:
       INFRA_SCOPE: "namespace"
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
       LITMUS_PROBE_NAME: "ci-http-probe"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
@@ -196,6 +198,7 @@ jobs:
       INFRA_SCOPE: "namespace"
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
       LITMUS_PROBE_NAME: "ci-http-probe"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
@@ -277,6 +280,7 @@ jobs:
       INFRA_SCOPE: "namespace"
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
       LITMUS_PROBE_NAME: "ci-http-probe"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
@@ -358,6 +362,7 @@ jobs:
       INFRA_SCOPE: "namespace"
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
       LITMUS_PROBE_NAME: "ci-http-probe"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
@@ -439,6 +444,7 @@ jobs:
       INFRA_SCOPE: "namespace"
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
       LITMUS_PROBE_NAME: "ci-http-probe"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
@@ -520,6 +526,7 @@ jobs:
       INFRA_SCOPE: "namespace"
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
       LITMUS_PROBE_NAME: "ci-http-probe"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
@@ -601,6 +608,7 @@ jobs:
       INFRA_SCOPE: "namespace"
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
       LITMUS_PROBE_NAME: "ci-http-probe"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
@@ -682,6 +690,7 @@ jobs:
       INFRA_SCOPE: "namespace"
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
       LITMUS_PROBE_NAME: "ci-http-probe"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
@@ -763,6 +772,7 @@ jobs:
       INFRA_SCOPE: "namespace"
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
       LITMUS_PROBE_NAME: "ci-http-probe"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
@@ -844,6 +854,7 @@ jobs:
       INFRA_SCOPE: "namespace"
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
       LITMUS_PROBE_NAME: "ci-http-probe"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
@@ -901,8 +912,8 @@ jobs:
           kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
           kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
 
-      - name: Run pod-network-corruption experiment
-        run: make pod-network-corruption
+      - name: Run pod-network-duplication experiment
+        run: make pod-network-duplication
 
       - name: Uninstall litmus
         run: make uninstall
@@ -925,6 +936,7 @@ jobs:
       INFRA_SCOPE: "namespace"
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
       LITMUS_PROBE_NAME: "ci-http-probe"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
@@ -982,8 +994,8 @@ jobs:
           kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
           kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
 
-      - name: Run pod-network-corruption experiment
-        run: make pod-network-corruption
+      - name: Run pod-network-latency experiment
+        run: make pod-network-latency
 
       - name: Uninstall litmus
         run: make uninstall
@@ -1006,6 +1018,7 @@ jobs:
       INFRA_SCOPE: "namespace"
       INFRA_ACTIVATION_TIMEOUT: "5"
       LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
       LITMUS_PROBE_NAME: "ci-http-probe"
       LITMUS_PROBE_TYPE: "httpProbe"
       LITMUS_PROBE_MODE: "SOT"
@@ -1063,8 +1076,8 @@ jobs:
           kubectl expose deployment nginx --port=80 --target-port=80 --name=nginx-service --type=ClusterIP
           kubectl wait --for=condition=Ready pods -l app=nginx --namespace default --timeout=30s
 
-      - name: Run pod-network-corruption experiment
-        run: make pod-network-corruption
+      - name: Run pod-network-loss experiment
+        run: make pod-network-loss
 
       - name: Uninstall litmus
         run: make uninstall        
