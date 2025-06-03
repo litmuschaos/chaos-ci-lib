@@ -284,7 +284,11 @@ func createInfrastructureViaRegisterInfra(experimentsDetails *types.ExperimentDe
 	if err != nil {
 		return "", fmt.Errorf("failed to make GraphQL request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Printf("Error closing response body: %v\n", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("GraphQL request failed with status: %d", resp.StatusCode)
@@ -419,7 +423,11 @@ func applyInfrastructureManifest(manifestContent []byte, experimentsDetails *typ
 	if err != nil {
 		return fmt.Errorf("failed to write manifest file: %v", err)
 	}
-	defer os.Remove(manifestFile) // Clean up temporary file
+	defer func() {
+		if err := os.Remove(manifestFile); err != nil {
+			fmt.Printf("Error removing temporary file %s: %v\n", manifestFile, err)
+		}
+	}()
 
 	// Apply the manifest using kubectl
 	command := []string{"apply", "-f", manifestFile, "--validate=false"}
@@ -533,7 +541,11 @@ func checkInfrastructureStatusViaGraphQL(experimentsDetails *types.ExperimentDet
 	if err != nil {
 		return false, fmt.Errorf("failed to make GraphQL request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Printf("Error closing response body: %v\n", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return false, fmt.Errorf("GraphQL request failed with status: %d", resp.StatusCode)

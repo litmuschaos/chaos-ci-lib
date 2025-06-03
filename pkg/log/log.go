@@ -23,7 +23,7 @@ func Infof(msg string, val ...interface{}) {
 
 // Info log the General operational entries about what's going on inside the application
 func Info(msg string) {
-	logrus.WithFields(logrus.Fields{}).Infof(msg)
+	logrus.WithFields(logrus.Fields{}).Info(msg)
 }
 
 // InfoWithValues log the General operational entries about what's going on inside the application

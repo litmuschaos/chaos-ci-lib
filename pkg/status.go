@@ -86,10 +86,9 @@ func PodStatusCheck(experimentsDetails *types.ExperimentDetails, clients environ
 					} else {
 						flag = true
 						break
-
 					}
 				}
-				if flag == true {
+				if flag {
 					break
 				}
 				if count == 19 {

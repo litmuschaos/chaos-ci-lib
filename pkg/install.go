@@ -152,8 +152,8 @@ func InstallChaosEngine(experimentsDetails *types.ExperimentDetails, chaosEngine
 	chaosEngine.Spec.Components.Runner.ImagePullPolicy = corev1.PullPolicy(experimentsDetails.ImagePullPolicy)
 
 	// Modify the spec of engine file
-	chaosEngine.ObjectMeta.Name = experimentsDetails.EngineName
-	chaosEngine.ObjectMeta.Namespace = experimentsDetails.ChaosNamespace
+	chaosEngine.Name = experimentsDetails.EngineName
+	chaosEngine.Namespace = experimentsDetails.ChaosNamespace
 
 	// If ChaosEngine contain App Info then update it
 	if chaosEngine.Spec.Appinfo.Appns != "" && chaosEngine.Spec.Appinfo.Applabel != "" {
