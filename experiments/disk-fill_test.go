@@ -12,7 +12,7 @@ import (
 	"github.com/litmuschaos/chaos-ci-lib/pkg/workflow"
 	"github.com/litmuschaos/litmus-go-sdk/pkg/sdk"
 	models "github.com/litmuschaos/litmus/chaoscenter/graphql/server/graph/model"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog"
