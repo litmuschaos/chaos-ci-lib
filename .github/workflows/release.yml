@@ -63,7 +63,7 @@ jobs:
         env:
           DOCKER_REPO: ${{ env.REPONAME }}
           DOCKER_IMAGE: ${{ env.IMAGENAME }}
-          DOCKER_TAG: ${RELEASE_TAG}
+          DOCKER_TAG: ${{ env.RELEASE_TAG }}
           DNAME: ${{ secrets.DNAME }}
           DPASS: ${{ secrets.DPASS }}
         run: |
