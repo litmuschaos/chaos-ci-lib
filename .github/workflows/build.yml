@@ -24,6 +24,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - name: Download dependencies
+        run: |
+          go mod download
+          go mod verify
+
       - name: gofmt check
         run: |
           if [ "$(gofmt -s -l . | wc -l)" -ne 0 ]
