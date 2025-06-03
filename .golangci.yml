@@ -1,0 +1,5 @@
+version: "2"
+
+run:
+  # Include test files in analysis or not
+  tests: false

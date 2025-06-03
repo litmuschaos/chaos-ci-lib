@@ -8,7 +8,7 @@ import (
 
 	"github.com/litmuschaos/chaos-ci-lib/pkg"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/types"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog"
@@ -20,7 +20,7 @@ func TestUninstallLitmus(t *testing.T) {
 	RunSpecs(t, "BDD test")
 }
 
-//BDD Tests to delete litmus
+// BDD Tests to delete litmus
 var _ = Describe("BDD of Litmus cleanup", func() {
 
 	// BDD TEST CASE 1

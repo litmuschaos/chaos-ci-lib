@@ -4,21 +4,72 @@ import (
 	"os"
 
 	chaosClient "github.com/litmuschaos/chaos-operator/pkg/client/clientset/versioned/typed/litmuschaos/v1alpha1"
+	litmusSDK "github.com/litmuschaos/litmus-go-sdk/pkg/sdk"
+	"github.com/litmuschaos/litmus-go-sdk/pkg/types"
 	"github.com/pkg/errors"
-	"k8s.io/client-go/kubernetes"
-
-	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/klog"
 )
 
-// ClientSets is a collection of clientSets and kubeConfig needed
+// // ClientSets is a collection of clientSets and kubeConfig needed
 type ClientSets struct {
-	KubeClient    *kubernetes.Clientset
-	LitmusClient  *chaosClient.LitmuschaosV1alpha1Client
-	KubeConfig    *rest.Config
-	DynamicClient dynamic.Interface
+	KubeClient      *kubernetes.Clientset
+	LitmusClient    *chaosClient.LitmuschaosV1alpha1Client
+	KubeConfig      *rest.Config
+	DynamicClient   dynamic.Interface
+	SDKClient       litmusSDK.Client
+	LitmusEndpoint  string
+	LitmusUsername  string
+	LitmusPassword  string
+	LitmusProjectID string
+	LitmusToken     string
+}
+
+// GenerateClientSetFromSDK will generate the Litmus SDK client
+func GenerateClientSetFromSDK() (litmusSDK.Client, error) {
+	// Initialize Litmus SDK client
+	endpoint := os.Getenv("LITMUS_ENDPOINT")
+	username := os.Getenv("LITMUS_USERNAME")
+	password := os.Getenv("LITMUS_PASSWORD")
+	projectID := os.Getenv("LITMUS_PROJECT_ID")
+
+	if endpoint == "" || username == "" || password == "" || projectID == "" {
+		return nil, errors.New("LITMUS_ENDPOINT, LITMUS_USERNAME, LITMUS_PASSWORD, and LITMUS_PROJECT_ID environment variables must be set")
+	}
+
+	// Initialize Litmus SDK client
+	sdkClient, err := litmusSDK.NewClient(litmusSDK.ClientOptions{
+		Endpoint:  endpoint,
+		Username:  username,
+		Password:  password,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "Unable to create Litmus SDK client: %v", err)
+	}
+
+	// Get the token using the Auth() method
+	token := sdkClient.Auth().GetToken()
+	if token != "" {
+		klog.Infof("Successfully retrieved token from SDK client")
+	} else {
+		klog.Warningf("Could not retrieve token from SDK client Auth().GetToken()")
+		return nil, errors.New("Failed to retrieve token from SDK client")
+	}
+	return sdkClient, nil
+}
+
+// Helper method to construct Credentials struct for SDK calls
+func (clientSets *ClientSets) GetSDKCredentials() types.Credentials {
+	return types.Credentials{
+		Endpoint:  clientSets.LitmusEndpoint,
+		Token:     clientSets.LitmusToken,
+		Username:  clientSets.LitmusUsername,
+		ProjectID: clientSets.LitmusProjectID,
+	}
 }
 
 // GenerateClientSetFromKubeConfig will generation both ClientSets (k8s, and Litmus) as well as the KubeConfig

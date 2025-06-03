@@ -8,7 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-//ChaosResultVerdict checks the chaos result verdict
+// ChaosResultVerdict checks the chaos result verdict
 func ChaosResultVerdict(experimentsDetails *types.ExperimentDetails, clients environment.ClientSets) error {
 
 	if err = WaitForChaosResultCompletion(experimentsDetails, clients); err != nil {
@@ -27,7 +27,7 @@ func ChaosResultVerdict(experimentsDetails *types.ExperimentDetails, clients env
 	return nil
 }
 
-//ChaosEngineVerdict checks the chaosengine verdict
+// ChaosEngineVerdict checks the chaosengine verdict
 func ChaosEngineVerdict(experimentsDetails *types.ExperimentDetails, clients environment.ClientSets) error {
 
 	if err = WaitForEngineCompletion(experimentsDetails, clients); err != nil {

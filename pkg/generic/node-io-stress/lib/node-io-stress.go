@@ -9,7 +9,7 @@ import (
 	"github.com/litmuschaos/chaos-operator/pkg/apis/litmuschaos/v1alpha1"
 )
 
-//InstallNodeIOStressEngine installs the given chaosengine for the experiment
+// InstallNodeIOStressEngine installs the given chaosengine for the experiment
 func InstallNodeIOStressEngine(experimentsDetails *types.ExperimentDetails, chaosEngine *v1alpha1.ChaosEngine, clients environment.ClientSets) error {
 
 	experimentENV := setNodeIOStressExperimentENV(experimentsDetails)
@@ -27,7 +27,8 @@ func setNodeIOStressExperimentENV(experimentsDetails *types.ExperimentDetails) *
 	}
 	// Add Experiment ENV's
 	envDetails.SetEnv("FILESYSTEM_UTILIZATION_PERCENTAGE", strconv.Itoa(experimentsDetails.NodeCPUCore)).
-		SetEnv("FILESYSTEM_UTILIZATION_BYTES", strconv.Itoa(experimentsDetails.FilesystemUtilizationBytes))
+		SetEnv("FILESYSTEM_UTILIZATION_BYTES", strconv.Itoa(experimentsDetails.FilesystemUtilizationBytes)).
+		SetEnv("NODES_AFFECTED_PERC", strconv.Itoa(experimentsDetails.PodsAffectedPerc))
 
 	return &envDetails
 }

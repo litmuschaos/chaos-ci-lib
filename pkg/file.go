@@ -3,7 +3,6 @@ package pkg
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -14,7 +13,7 @@ import (
 // EditFile will edit the content of a file
 func EditFile(filepath, old, new string) error {
 	failFlag := true
-	fileData, err := ioutil.ReadFile(filepath)
+	fileData, err := os.ReadFile(filepath)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to read the given file, due to:%v", err)
 	}
@@ -22,7 +21,7 @@ func EditFile(filepath, old, new string) error {
 
 	for i, line := range lines {
 		if strings.Contains(line, old) {
-			lines[i] = strings.Replace(lines[i], old, new, -1)
+			lines[i] = strings.ReplaceAll(lines[i], old, new)
 			failFlag = false
 		}
 	}
@@ -30,7 +29,7 @@ func EditFile(filepath, old, new string) error {
 		return errors.Errorf("Error in updating \"%v\" please check the file", old)
 	}
 	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile(filepath, []byte(output), 0644)
+	err = os.WriteFile(filepath, []byte(output), 0644)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to write the data in the given file, due to:%v", err)
 	}
@@ -41,7 +40,7 @@ func EditFile(filepath, old, new string) error {
 // EditKeyValue will edit the value according to key content of the file
 func EditKeyValue(filepath, key, oldvalue, newvalue string) error {
 	failFlag := true
-	fileData, err := ioutil.ReadFile(filepath)
+	fileData, err := os.ReadFile(filepath)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to read the given file, due to:%v", err)
 	}
@@ -49,7 +48,7 @@ func EditKeyValue(filepath, key, oldvalue, newvalue string) error {
 
 	for i, line := range lines {
 		if strings.Contains(line, key) {
-			lines[i+1] = strings.Replace(lines[i+1], oldvalue, newvalue, -1)
+			lines[i+1] = strings.ReplaceAll(lines[i+1], oldvalue, newvalue)
 			failFlag = false
 		}
 	}
@@ -57,7 +56,7 @@ func EditKeyValue(filepath, key, oldvalue, newvalue string) error {
 		return errors.Errorf("Error in updating \"%v\" please check the file", oldvalue)
 	}
 	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile(filepath, []byte(output), 0644)
+	err = os.WriteFile(filepath, []byte(output), 0644)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to write the data in the given file, due to:%v", err)
 	}
@@ -68,7 +67,7 @@ func EditKeyValue(filepath, key, oldvalue, newvalue string) error {
 // AddAfterMatch will add a new line when a match is found
 func AddAfterMatch(filepath, key, newvalue string) error {
 	failFlag := true
-	fileData, err := ioutil.ReadFile(filepath)
+	fileData, err := os.ReadFile(filepath)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to read the given file, due to:%v", err)
 	}
@@ -86,7 +85,7 @@ func AddAfterMatch(filepath, key, newvalue string) error {
 		return errors.Errorf("Error in adding \"%v\", \"%v\" not found ", newvalue, key)
 	}
 	output := strings.Join(lines, "\n")
-	err = ioutil.WriteFile(filepath, []byte(output), 0644)
+	err = os.WriteFile(filepath, []byte(output), 0644)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to write the data in the given file, due to:%v", err)
 	}
@@ -103,14 +102,22 @@ func DownloadFile(filepath string, url string) error {
 	if err != nil {
 		return fmt.Errorf("fail to get the data: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Printf("Error closing response body: %v\n", err)
+		}
+	}()
 
 	// Create the file
 	out, err := os.Create(filepath)
 	if err != nil {
 		return fmt.Errorf("fail to create the file: %w", err)
 	}
-	defer out.Close()
+	defer func() {
+		if err := out.Close(); err != nil {
+			fmt.Printf("Error closing file: %v\n", err)
+		}
+	}()
 
 	// Write the body to file
 	_, err = io.Copy(out, resp.Body)

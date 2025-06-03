@@ -9,7 +9,7 @@ import (
 	"github.com/litmuschaos/chaos-operator/pkg/apis/litmuschaos/v1alpha1"
 )
 
-//InstallPodNetworkCorruptionEngine installs the given chaosengine for the experiment
+// InstallPodNetworkCorruptionEngine installs the given chaosengine for the experiment
 func InstallPodNetworkCorruptionEngine(experimentsDetails *types.ExperimentDetails, chaosEngine *v1alpha1.ChaosEngine, clients environment.ClientSets) error {
 
 	experimentENV := setPodNetworkCorruptionExperimentENV(experimentsDetails)

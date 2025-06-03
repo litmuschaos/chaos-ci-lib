@@ -9,7 +9,7 @@ import (
 	"github.com/litmuschaos/chaos-operator/pkg/apis/litmuschaos/v1alpha1"
 )
 
-//InstallPodMemoryHogEngine installs the given chaosengine for the experiment
+// InstallPodMemoryHogEngine installs the given chaosengine for the experiment
 func InstallPodMemoryHogEngine(experimentsDetails *types.ExperimentDetails, chaosEngine *v1alpha1.ChaosEngine, clients environment.ClientSets) error {
 
 	experimentENV := setPodMemoryHogExperimentENV(experimentsDetails)

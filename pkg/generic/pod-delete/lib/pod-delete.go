@@ -9,7 +9,7 @@ import (
 	"github.com/litmuschaos/chaos-operator/pkg/apis/litmuschaos/v1alpha1"
 )
 
-//InstallPodDeleteEngine installs the given chaosengine for the experiment
+// InstallPodDeleteEngine installs the given chaosengine for the experiment
 func InstallPodDeleteEngine(experimentsDetails *types.ExperimentDetails, chaosEngine *v1alpha1.ChaosEngine, clients environment.ClientSets) error {
 
 	experimentENV := setPodDeleteExperimentENV(experimentsDetails)

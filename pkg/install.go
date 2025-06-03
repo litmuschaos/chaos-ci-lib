@@ -1,6 +1,8 @@
 package pkg
 
 import (
+	"io"
+
 	yamlChe "github.com/ghodss/yaml"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/environment"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/log"
@@ -12,7 +14,6 @@ import (
 
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 
@@ -28,7 +29,7 @@ import (
 
 var err error
 
-//CreateChaosResource creates litmus components with given inputs
+// CreateChaosResource creates litmus components with given inputs
 func CreateChaosResource(fileData []byte, namespace string, clients environment.ClientSets) error {
 
 	decoder := yamlutil.NewYAMLOrJSONDecoder(bytes.NewReader(fileData), 100)
@@ -91,7 +92,7 @@ func CreateChaosResource(fileData []byte, namespace string, clients environment.
 	}
 }
 
-//InstallGoRbac installs and configure rbac for running go based chaos
+// InstallGoRbac installs and configure rbac for running go based chaos
 func InstallRbac(experimentsDetails *types.ExperimentDetails, rbacNamespace string) error {
 
 	//Fetch RBAC file
@@ -118,7 +119,7 @@ func InstallRbac(experimentsDetails *types.ExperimentDetails, rbacNamespace stri
 	return nil
 }
 
-//InstallChaosEngine installs the given go based chaos engine
+// InstallChaosEngine installs the given go based chaos engine
 func InstallChaosEngine(experimentsDetails *types.ExperimentDetails, chaosEngine *v1alpha1.ChaosEngine, experimentENVs *ENVDetails, clients environment.ClientSets) error {
 
 	// contains all the envs
@@ -133,7 +134,7 @@ func InstallChaosEngine(experimentsDetails *types.ExperimentDetails, chaosEngine
 	}
 
 	// ReadAll reads from response until an error or EOF and returns the data it read.
-	fileInput, err := ioutil.ReadAll(res.Body)
+	fileInput, err := io.ReadAll(res.Body)
 	if err != nil {
 		log.Errorf("Fail to read data from response: %v", err)
 	}
@@ -151,8 +152,8 @@ func InstallChaosEngine(experimentsDetails *types.ExperimentDetails, chaosEngine
 	chaosEngine.Spec.Components.Runner.ImagePullPolicy = corev1.PullPolicy(experimentsDetails.ImagePullPolicy)
 
 	// Modify the spec of engine file
-	chaosEngine.ObjectMeta.Name = experimentsDetails.EngineName
-	chaosEngine.ObjectMeta.Namespace = experimentsDetails.ChaosNamespace
+	chaosEngine.Name = experimentsDetails.EngineName
+	chaosEngine.Namespace = experimentsDetails.ChaosNamespace
 
 	// If ChaosEngine contain App Info then update it
 	if chaosEngine.Spec.Appinfo.Appns != "" && chaosEngine.Spec.Appinfo.Applabel != "" {
@@ -204,7 +205,7 @@ func InstallChaosEngine(experimentsDetails *types.ExperimentDetails, chaosEngine
 	return nil
 }
 
-//InstallLitmus installs the latest version of litmus
+// InstallLitmus installs the latest version of litmus
 func InstallLitmus(testsDetails *types.ExperimentDetails) error {
 
 	log.Info("Installing Litmus ...")

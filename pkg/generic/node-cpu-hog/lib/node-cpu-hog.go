@@ -9,7 +9,7 @@ import (
 	"github.com/litmuschaos/chaos-operator/pkg/apis/litmuschaos/v1alpha1"
 )
 
-//InstallNodeCPUHogEngine installs the given chaosengine for the experiment
+// InstallNodeCPUHogEngine installs the given chaosengine for the experiment
 func InstallNodeCPUHogEngine(experimentsDetails *types.ExperimentDetails, chaosEngine *v1alpha1.ChaosEngine, clients environment.ClientSets) error {
 
 	experimentENV := setNodeCPUHogExperimentENV(experimentsDetails)

@@ -11,7 +11,7 @@ import (
 	"github.com/litmuschaos/chaos-ci-lib/pkg/environment"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/log"
 	"github.com/litmuschaos/chaos-ci-lib/pkg/types"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -29,7 +29,7 @@ func TestInstallLitmus(t *testing.T) {
 	RunSpecs(t, "BDD test")
 }
 
-//BDD Tests to Install Litmus
+// BDD Tests to Install Litmus
 var _ = Describe("BDD of Litmus installation", func() {
 
 	// BDD TEST CASE 1

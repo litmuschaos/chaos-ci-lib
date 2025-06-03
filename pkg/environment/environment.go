@@ -7,13 +7,13 @@ import (
 	types "github.com/litmuschaos/chaos-ci-lib/pkg/types"
 )
 
-//GetENV fetches all the env variables from the runner pod
+// GetENV fetches all the env variables from the runner pod
 func GetENV(experimentDetails *types.ExperimentDetails, expName, engineName string) {
 	experimentDetails.ExperimentName = expName
 	experimentDetails.EngineName = engineName
 	experimentDetails.OperatorName = Getenv("OPERATOR_NAME", "chaos-operator-ce")
 	experimentDetails.ChaosNamespace = Getenv("CHAOS_NAMESPACE", "default")
-	experimentDetails.AppNS = Getenv("APP_NS", "default")
+	experimentDetails.AppNS = Getenv("APP_NS", "litmus")
 	experimentDetails.AppLabel = Getenv("APP_LABEL", "app=nginx")
 	experimentDetails.AppKind = Getenv("APP_KIND", "deployment")
 	experimentDetails.JobCleanUpPolicy = Getenv("JOB_CLEANUP_POLICY", "retain")
@@ -47,6 +47,8 @@ func GetENV(experimentDetails *types.ExperimentDetails, expName, engineName stri
 	experimentDetails.NodesAffectedPerc, _ = strconv.Atoi(Getenv("NODES_AFFECTED_PERC", "0"))
 	experimentDetails.FilesystemUtilizationBytes, _ = strconv.Atoi(Getenv("FILESYSTEM_UTILIZATION_BYTES", ""))
 	experimentDetails.Replicas, _ = strconv.Atoi(Getenv("REPLICA_COUNT", "0"))
+	experimentDetails.ExperimentTimeout, _ = strconv.Atoi(Getenv("EXPERIMENT_TIMEOUT", "8"))
+	experimentDetails.ExperimentPollingInterval, _ = strconv.Atoi(Getenv("EXPERIMENT_POLLING_INTERVAL", "15"))
 
 	//All Images for running chaos test
 	experimentDetails.GoExperimentImage = Getenv("EXPERIMENT_IMAGE", "litmuschaos/go-runner:ci")
@@ -58,6 +60,45 @@ func GetENV(experimentDetails *types.ExperimentDetails, expName, engineName stri
 	experimentDetails.EnginePath = Getenv("ENGINE_PATH", "https://hub.litmuschaos.io/api/chaos/master?file=charts/generic/"+expName+"/engine.yaml")
 	experimentDetails.InstallLitmus = Getenv("INSTALL_LITMUS_URL", "https://litmuschaos.github.io/litmus/litmus-operator-latest.yaml")
 
+	// V3 SDK Related ENV parsing
+	experimentDetails.InstallLitmusFlag, _ = strconv.ParseBool(Getenv("INSTALL_CHAOS_CENTER", "false"))
+	experimentDetails.ConnectInfraFlag, _ = strconv.ParseBool(Getenv("CONNECT_INFRA", "false"))
+	experimentDetails.LitmusEndpoint = Getenv("LITMUS_ENDPOINT", "")
+	experimentDetails.LitmusUsername = Getenv("LITMUS_USERNAME", "")
+	experimentDetails.LitmusPassword = Getenv("LITMUS_PASSWORD", "")
+	experimentDetails.LitmusProjectID = Getenv("LITMUS_PROJECT_ID", "")
+	experimentDetails.InfraName = Getenv("INFRA_NAME", "ci-infra-"+expName)
+	experimentDetails.InfraNamespace = Getenv("INFRA_NAMESPACE", "litmus")
+	experimentDetails.InfraScope = Getenv("INFRA_SCOPE", "namespace")
+	experimentDetails.InfraSA = Getenv("INFRA_SERVICE_ACCOUNT", "litmus")
+	experimentDetails.InfraDescription = Getenv("INFRA_DESCRIPTION", "CI Test Infrastructure")
+	experimentDetails.InfraPlatformName = Getenv("INFRA_PLATFORM_NAME", "others")
+	experimentDetails.InfraEnvironmentID = Getenv("INFRA_ENVIRONMENT_ID", "")
+	experimentDetails.InfraNsExists, _ = strconv.ParseBool(Getenv("INFRA_NS_EXISTS", "false"))
+	experimentDetails.InfraSaExists, _ = strconv.ParseBool(Getenv("INFRA_SA_EXISTS", "false"))
+	experimentDetails.InfraSkipSSL, _ = strconv.ParseBool(Getenv("INFRA_SKIP_SSL", "false"))
+	experimentDetails.InfraNodeSelector = Getenv("INFRA_NODE_SELECTOR", "")
+	experimentDetails.InfraTolerations = Getenv("INFRA_TOLERATIONS", "")
+
+	// New infrastructure control variables
+	experimentDetails.InstallInfra, _ = strconv.ParseBool(Getenv("INSTALL_INFRA", "true"))
+	experimentDetails.UseExistingInfra, _ = strconv.ParseBool(Getenv("USE_EXISTING_INFRA", "false"))
+	experimentDetails.ExistingInfraID = Getenv("EXISTING_INFRA_ID", "")
+
+	// Infrastructure activation control
+	experimentDetails.ActivateInfra, _ = strconv.ParseBool(Getenv("ACTIVATE_INFRA", "true"))
+	experimentDetails.InfraActivationTimeout, _ = strconv.Atoi(Getenv("INFRA_ACTIVATION_TIMEOUT", "5"))
+
+	// Probe configuration
+	experimentDetails.CreateProbe, _ = strconv.ParseBool(Getenv("LITMUS_CREATE_PROBE", "false"))
+	experimentDetails.ProbeType = Getenv("LITMUS_PROBE_TYPE", "httpProbe")
+	experimentDetails.ProbeName = Getenv("LITMUS_PROBE_NAME", "http-probe")
+	experimentDetails.ProbeMode = Getenv("LITMUS_PROBE_MODE", "SOT")
+	experimentDetails.ProbeURL = Getenv("LITMUS_PROBE_URL", "http://localhost:8080/health")
+	experimentDetails.ProbeTimeout = Getenv("LITMUS_PROBE_TIMEOUT", "30s")
+	experimentDetails.ProbeInterval = Getenv("LITMUS_PROBE_INTERVAL", "10s")
+	experimentDetails.ProbeAttempts, _ = strconv.Atoi(Getenv("LITMUS_PROBE_ATTEMPTS", "1"))
+	experimentDetails.ProbeResponseCode = Getenv("LITMUS_PROBE_RESPONSE_CODE", "200")
 }
 
 // Getenv fetch the env and set the default value, if any

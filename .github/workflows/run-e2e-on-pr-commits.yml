@@ -11,7 +11,34 @@ jobs:
   Container-Kill_Test:
     runs-on: ubuntu-latest
     env:
-      KUBECONFIG: /home/runner/.kube/config 
+      KUBECONFIG: /home/runner/.kube/config
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
+      APP_NS: "litmus"
+      APP_LABEL: "app=nginx-container-kill"
+      INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
+      CREATE_ENV: "true"
+      ENV_NAME: "ci-test-env"
+      ENV_TYPE: "NON_PROD"
+      INFRA_NAME: "ci-infra-container-kill"
+      INFRA_NAMESPACE: "litmus"
+      INFRA_SCOPE: "cluster"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
+      LITMUS_PROBE_NAME: "ci-http-probe-container-kill"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service-container-kill.litmus.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
+      SOCKET_PATH: "/run/containerd/containerd.sock"
+      CONTAINER_RUNTIME: "containerd"
     steps:
       
       - uses: actions/checkout@v2
@@ -27,24 +54,90 @@ jobs:
           kubectl wait node --all --for condition=ready --timeout=120s
           kubectl get nodes 
 
+      - name: Install Litmus ChaosCenter locally
+        run: |
+          # Add Litmus Helm repository
+          helm repo add litmuschaos https://litmuschaos.github.io/litmus-helm/
+          helm repo update
+          
+          # Install Litmus ChaosCenter
+          kubectl create namespace litmus
+          helm install chaos litmuschaos/litmus \
+            --namespace litmus \
+            --set portal.frontend.service.type=NodePort \
+            --set portal.server.service.type=NodePort \
+            --set mongodb.service.type=NodePort \
+            --wait --timeout=600s
+          
+          # Wait for all pods to be ready
+          kubectl wait --for=condition=ready pod --all -n litmus --timeout=600s
+          
+          # Get the NodePort for the frontend service
+          FRONTEND_PORT=$(kubectl get svc chaos-litmus-frontend-service -n litmus -o jsonpath='{.spec.ports[0].nodePort}')
+          echo "Frontend NodePort: $FRONTEND_PORT"
+          
+          # Set up port forwarding to access ChaosCenter locally
+          kubectl port-forward -n litmus svc/chaos-litmus-frontend-service 9091:9091 &
+          kubectl port-forward -n litmus svc/chaos-litmus-server-service 9002:9002 &
+          
+          # Wait for port forwarding to be established
+          sleep 30
+          
+          # Verify ChaosCenter is accessible
+          curl -f http://localhost:9091 || echo "Frontend not ready yet"
+          curl -f http://localhost:9002/api/status || echo "Backend not ready yet"
+
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
-
-      - name: Install Litmus
-        run: make install
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-container-kill.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-container-kill/g' nginx-container-kill.yml
+          sed -i 's/app: nginx/app: nginx-container-kill/g' nginx-container-kill.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-container-kill.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx-container-kill --port=80 --target-port=80 --name=nginx-service-container-kill --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-container-kill --namespace litmus --timeout=30s
 
       - name: Run container-kill experiment
         run: make container-kill
 
-      - name: Uninstall litmus
-        run: make uninstall
+
       
   Disk-Fill_Test:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
+      APP_NS: "litmus"
+      APP_LABEL: "app=nginx-disk-fill"
+      INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
+      CREATE_ENV: "true"
+      ENV_NAME: "ci-test-env"
+      ENV_TYPE: "NON_PROD"
+      INFRA_NAME: "ci-infra-disk-fill"
+      INFRA_NAMESPACE: "litmus"
+      INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
+      LITMUS_PROBE_NAME: "ci-http-probe-disk-fill"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service-disk-fill.litmus.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -60,24 +153,82 @@ jobs:
           kubectl wait node --all --for condition=ready --timeout=120s
           kubectl get nodes 
 
+      - name: Install Litmus ChaosCenter locally
+        run: |
+          # Add Litmus Helm repository
+          helm repo add litmuschaos https://litmuschaos.github.io/litmus-helm/
+          helm repo update
+          
+          # Install Litmus ChaosCenter
+          kubectl create namespace litmus
+          helm install chaos litmuschaos/litmus \
+            --namespace litmus \
+            --set portal.frontend.service.type=NodePort \
+            --set portal.server.service.type=NodePort \
+            --set mongodb.service.type=NodePort \
+            --wait --timeout=600s
+          
+          # Wait for all pods to be ready
+          kubectl wait --for=condition=ready pod --all -n litmus --timeout=600s
+          
+          # Set up port forwarding to access ChaosCenter locally
+          kubectl port-forward -n litmus svc/chaos-litmus-frontend-service 9091:9091 &
+          kubectl port-forward -n litmus svc/chaos-litmus-server-service 9002:9002 &
+          
+          # Wait for port forwarding to be established
+          sleep 30
+
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
-
-      - name: Install Litmus
-        run: make install
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-disk-fill.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-disk-fill/g' nginx-disk-fill.yml
+          sed -i 's/app: nginx/app: nginx-disk-fill/g' nginx-disk-fill.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-disk-fill.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx-disk-fill --port=80 --target-port=80 --name=nginx-service-disk-fill --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-disk-fill --namespace litmus --timeout=30s
 
       - name: Run disk-fill experiment
         run: make disk-fill
 
-      - name: Uninstall litmus
-        run: make uninstall
+
 
   Node_CPU_Hog_Test:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
+      APP_NS: "litmus"
+      APP_LABEL: "app=nginx-node-cpu-hog"
+      INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
+      CREATE_ENV: "true"
+      ENV_NAME: "ci-test-env"
+      ENV_TYPE: "NON_PROD"
+      INFRA_NAME: "ci-infra-node-cpu-hog"
+      INFRA_NAMESPACE: "litmus"
+      INFRA_SCOPE: "cluster"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
+      LITMUS_PROBE_NAME: "ci-http-probe-node-cpu-hog"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service-node-cpu-hog.litmus.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -93,24 +244,82 @@ jobs:
           kubectl wait node --all --for condition=ready --timeout=120s
           kubectl get nodes 
 
+      - name: Install Litmus ChaosCenter locally
+        run: |
+          # Add Litmus Helm repository
+          helm repo add litmuschaos https://litmuschaos.github.io/litmus-helm/
+          helm repo update
+          
+          # Install Litmus ChaosCenter
+          kubectl create namespace litmus
+          helm install chaos litmuschaos/litmus \
+            --namespace litmus \
+            --set portal.frontend.service.type=NodePort \
+            --set portal.server.service.type=NodePort \
+            --set mongodb.service.type=NodePort \
+            --wait --timeout=600s
+          
+          # Wait for all pods to be ready
+          kubectl wait --for=condition=ready pod --all -n litmus --timeout=600s
+          
+          # Set up port forwarding to access ChaosCenter locally
+          kubectl port-forward -n litmus svc/chaos-litmus-frontend-service 9091:9091 &
+          kubectl port-forward -n litmus svc/chaos-litmus-server-service 9002:9002 &
+          
+          # Wait for port forwarding to be established
+          sleep 30
+
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
-
-      - name: Install Litmus
-        run: make install
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-node-cpu-hog.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-node-cpu-hog/g' nginx-node-cpu-hog.yml
+          sed -i 's/app: nginx/app: nginx-node-cpu-hog/g' nginx-node-cpu-hog.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-node-cpu-hog.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx-node-cpu-hog --port=80 --target-port=80 --name=nginx-service-node-cpu-hog --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-node-cpu-hog --namespace litmus --timeout=30s
 
       - name: Run node-cpu-hog experiment
         run: make node-cpu-hog
 
-      - name: Uninstall litmus
-        run: make uninstall           
-        
+
+
   Node_IO_Stress_Test:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
+      APP_NS: "litmus"
+      APP_LABEL: "app=nginx-node-io-stress"
+      INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
+      CREATE_ENV: "true"
+      ENV_NAME: "ci-test-env"
+      ENV_TYPE: "NON_PROD"
+      INFRA_NAME: "ci-infra-node-io-stress"
+      INFRA_NAMESPACE: "litmus"
+      INFRA_SCOPE: "cluster"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
+      LITMUS_PROBE_NAME: "ci-http-probe-node-io-stress"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service-node-io-stress.litmus.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -126,24 +335,82 @@ jobs:
           kubectl wait node --all --for condition=ready --timeout=120s
           kubectl get nodes 
 
+      - name: Install Litmus ChaosCenter locally
+        run: |
+          # Add Litmus Helm repository
+          helm repo add litmuschaos https://litmuschaos.github.io/litmus-helm/
+          helm repo update
+          
+          # Install Litmus ChaosCenter
+          kubectl create namespace litmus
+          helm install chaos litmuschaos/litmus \
+            --namespace litmus \
+            --set portal.frontend.service.type=NodePort \
+            --set portal.server.service.type=NodePort \
+            --set mongodb.service.type=NodePort \
+            --wait --timeout=600s
+          
+          # Wait for all pods to be ready
+          kubectl wait --for=condition=ready pod --all -n litmus --timeout=600s
+          
+          # Set up port forwarding to access ChaosCenter locally
+          kubectl port-forward -n litmus svc/chaos-litmus-frontend-service 9091:9091 &
+          kubectl port-forward -n litmus svc/chaos-litmus-server-service 9002:9002 &
+          
+          # Wait for port forwarding to be established
+          sleep 30
+
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
-
-      - name: Install Litmus
-        run: make install
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-node-io-stress.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-node-io-stress/g' nginx-node-io-stress.yml
+          sed -i 's/app: nginx/app: nginx-node-io-stress/g' nginx-node-io-stress.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-node-io-stress.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx-node-io-stress --port=80 --target-port=80 --name=nginx-service-node-io-stress --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-node-io-stress --namespace litmus --timeout=30s
 
       - name: Run node-io-stress experiment
         run: make node-io-stress
 
-      - name: Uninstall litmus
-        run: make uninstall
+
 
   Node_Memory_Hog_Test:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
+      APP_NS: "litmus"
+      APP_LABEL: "app=nginx-node-memory-hog"
+      INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
+      CREATE_ENV: "true"
+      ENV_NAME: "ci-test-env"
+      ENV_TYPE: "NON_PROD"
+      INFRA_NAME: "ci-infra-node-memory-hog"
+      INFRA_NAMESPACE: "litmus"
+      INFRA_SCOPE: "cluster"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
+      LITMUS_PROBE_NAME: "ci-http-probe-node-memory-hog"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service-node-memory-hog.litmus.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -159,24 +426,82 @@ jobs:
           kubectl wait node --all --for condition=ready --timeout=120s
           kubectl get nodes 
 
+      - name: Install Litmus ChaosCenter locally
+        run: |
+          # Add Litmus Helm repository
+          helm repo add litmuschaos https://litmuschaos.github.io/litmus-helm/
+          helm repo update
+          
+          # Install Litmus ChaosCenter
+          kubectl create namespace litmus
+          helm install chaos litmuschaos/litmus \
+            --namespace litmus \
+            --set portal.frontend.service.type=NodePort \
+            --set portal.server.service.type=NodePort \
+            --set mongodb.service.type=NodePort \
+            --wait --timeout=600s
+          
+          # Wait for all pods to be ready
+          kubectl wait --for=condition=ready pod --all -n litmus --timeout=600s
+          
+          # Set up port forwarding to access ChaosCenter locally
+          kubectl port-forward -n litmus svc/chaos-litmus-frontend-service 9091:9091 &
+          kubectl port-forward -n litmus svc/chaos-litmus-server-service 9002:9002 &
+          
+          # Wait for port forwarding to be established
+          sleep 30
+
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
-
-      - name: Install Litmus
-        run: make install
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-node-memory-hog.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-node-memory-hog/g' nginx-node-memory-hog.yml
+          sed -i 's/app: nginx/app: nginx-node-memory-hog/g' nginx-node-memory-hog.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-node-memory-hog.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx-node-memory-hog --port=80 --target-port=80 --name=nginx-service-node-memory-hog --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-node-memory-hog --namespace litmus --timeout=30s
 
       - name: Run node-memory-hog experiment
         run: make node-memory-hog
 
-      - name: Uninstall litmus
-        run: make uninstall        
+        
           
   Pod_Autoscaler_Test:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
+      APP_NS: "litmus"
+      APP_LABEL: "app=nginx-pod-autoscaler"
+      INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
+      CREATE_ENV: "true"
+      ENV_NAME: "ci-test-env"
+      ENV_TYPE: "NON_PROD"
+      INFRA_NAME: "ci-infra-pod-autoscaler"
+      INFRA_NAMESPACE: "litmus"
+      INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
+      LITMUS_PROBE_NAME: "ci-http-probe-pod-autoscaler"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service-pod-autoscaler.litmus.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -192,24 +517,82 @@ jobs:
           kubectl wait node --all --for condition=ready --timeout=120s
           kubectl get nodes 
 
+      - name: Install Litmus ChaosCenter locally
+        run: |
+          # Add Litmus Helm repository
+          helm repo add litmuschaos https://litmuschaos.github.io/litmus-helm/
+          helm repo update
+          
+          # Install Litmus ChaosCenter
+          kubectl create namespace litmus
+          helm install chaos litmuschaos/litmus \
+            --namespace litmus \
+            --set portal.frontend.service.type=NodePort \
+            --set portal.server.service.type=NodePort \
+            --set mongodb.service.type=NodePort \
+            --wait --timeout=600s
+          
+          # Wait for all pods to be ready
+          kubectl wait --for=condition=ready pod --all -n litmus --timeout=600s
+          
+          # Set up port forwarding to access ChaosCenter locally
+          kubectl port-forward -n litmus svc/chaos-litmus-frontend-service 9091:9091 &
+          kubectl port-forward -n litmus svc/chaos-litmus-server-service 9002:9002 &
+          
+          # Wait for port forwarding to be established
+          sleep 30
+
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
-
-      - name: Install Litmus
-        run: make install
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-pod-autoscaler.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-pod-autoscaler/g' nginx-pod-autoscaler.yml
+          sed -i 's/app: nginx/app: nginx-pod-autoscaler/g' nginx-pod-autoscaler.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-pod-autoscaler.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx-pod-autoscaler --port=80 --target-port=80 --name=nginx-service-pod-autoscaler --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-pod-autoscaler --namespace litmus --timeout=30s
 
       - name: Run pod-autoscaler experiment
         run: make pod-autoscaler
 
-      - name: Uninstall litmus
-        run: make uninstall     
+     
 
   Pod_CPU_Hog_Test:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
+      APP_NS: "litmus"
+      APP_LABEL: "app=nginx-pod-cpu-hog"
+      INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
+      CREATE_ENV: "true"
+      ENV_NAME: "ci-test-env"
+      ENV_TYPE: "NON_PROD"
+      INFRA_NAME: "ci-infra-pod-cpu-hog"
+      INFRA_NAMESPACE: "litmus"
+      INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
+      LITMUS_PROBE_NAME: "ci-http-probe-pod-cpu-hog"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service-pod-cpu-hog.litmus.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -225,24 +608,82 @@ jobs:
           kubectl wait node --all --for condition=ready --timeout=120s
           kubectl get nodes 
 
+      - name: Install Litmus ChaosCenter locally
+        run: |
+          # Add Litmus Helm repository
+          helm repo add litmuschaos https://litmuschaos.github.io/litmus-helm/
+          helm repo update
+          
+          # Install Litmus ChaosCenter
+          kubectl create namespace litmus
+          helm install chaos litmuschaos/litmus \
+            --namespace litmus \
+            --set portal.frontend.service.type=NodePort \
+            --set portal.server.service.type=NodePort \
+            --set mongodb.service.type=NodePort \
+            --wait --timeout=600s
+          
+          # Wait for all pods to be ready
+          kubectl wait --for=condition=ready pod --all -n litmus --timeout=600s
+          
+          # Set up port forwarding to access ChaosCenter locally
+          kubectl port-forward -n litmus svc/chaos-litmus-frontend-service 9091:9091 &
+          kubectl port-forward -n litmus svc/chaos-litmus-server-service 9002:9002 &
+          
+          # Wait for port forwarding to be established
+          sleep 30
+
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
-
-      - name: Install Litmus
-        run: make install
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-pod-cpu-hog.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-pod-cpu-hog/g' nginx-pod-cpu-hog.yml
+          sed -i 's/app: nginx/app: nginx-pod-cpu-hog/g' nginx-pod-cpu-hog.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-pod-cpu-hog.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx-pod-cpu-hog --port=80 --target-port=80 --name=nginx-service-pod-cpu-hog --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-pod-cpu-hog --namespace litmus --timeout=30s
 
       - name: Run pod-cpu-hog experiment
         run: make pod-cpu-hog
 
-      - name: Uninstall litmus
-        run: make uninstall     
+     
 
   Pod_Delete_Test:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
+      APP_NS: "litmus"
+      APP_LABEL: "app=nginx-pod-delete"
+      INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
+      CREATE_ENV: "true"
+      ENV_NAME: "ci-test-env"
+      ENV_TYPE: "NON_PROD"
+      INFRA_NAME: "ci-infra-pod-delete"
+      INFRA_NAMESPACE: "litmus"
+      INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
+      LITMUS_PROBE_NAME: "ci-http-probe-pod-delete"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service-pod-delete.litmus.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -258,24 +699,82 @@ jobs:
           kubectl wait node --all --for condition=ready --timeout=120s
           kubectl get nodes 
 
+      - name: Install Litmus ChaosCenter locally
+        run: |
+          # Add Litmus Helm repository
+          helm repo add litmuschaos https://litmuschaos.github.io/litmus-helm/
+          helm repo update
+          
+          # Install Litmus ChaosCenter
+          kubectl create namespace litmus
+          helm install chaos litmuschaos/litmus \
+            --namespace litmus \
+            --set portal.frontend.service.type=NodePort \
+            --set portal.server.service.type=NodePort \
+            --set mongodb.service.type=NodePort \
+            --wait --timeout=600s
+          
+          # Wait for all pods to be ready
+          kubectl wait --for=condition=ready pod --all -n litmus --timeout=600s
+          
+          # Set up port forwarding to access ChaosCenter locally
+          kubectl port-forward -n litmus svc/chaos-litmus-frontend-service 9091:9091 &
+          kubectl port-forward -n litmus svc/chaos-litmus-server-service 9002:9002 &
+          
+          # Wait for port forwarding to be established
+          sleep 30
+
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
-
-      - name: Install Litmus
-        run: make install
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-pod-delete.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-pod-delete/g' nginx-pod-delete.yml
+          sed -i 's/app: nginx/app: nginx-pod-delete/g' nginx-pod-delete.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-pod-delete.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx-pod-delete --port=80 --target-port=80 --name=nginx-service-pod-delete --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-pod-delete --namespace litmus --timeout=30s
 
       - name: Run pod-delete experiment
         run: make pod-delete
 
-      - name: Uninstall litmus
-        run: make uninstall     
+     
 
   Pod_Memory_Hog_Test:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
+      APP_NS: "litmus"
+      APP_LABEL: "app=nginx-pod-memory-hog"
+      INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
+      CREATE_ENV: "true"
+      ENV_NAME: "ci-test-env"
+      ENV_TYPE: "NON_PROD"
+      INFRA_NAME: "ci-infra-pod-memory-hog"
+      INFRA_NAMESPACE: "litmus"
+      INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
+      LITMUS_PROBE_NAME: "ci-http-probe-pod-memory-hog"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service-pod-memory-hog.litmus.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -291,24 +790,82 @@ jobs:
           kubectl wait node --all --for condition=ready --timeout=120s
           kubectl get nodes 
 
+      - name: Install Litmus ChaosCenter locally
+        run: |
+          # Add Litmus Helm repository
+          helm repo add litmuschaos https://litmuschaos.github.io/litmus-helm/
+          helm repo update
+          
+          # Install Litmus ChaosCenter
+          kubectl create namespace litmus
+          helm install chaos litmuschaos/litmus \
+            --namespace litmus \
+            --set portal.frontend.service.type=NodePort \
+            --set portal.server.service.type=NodePort \
+            --set mongodb.service.type=NodePort \
+            --wait --timeout=600s
+          
+          # Wait for all pods to be ready
+          kubectl wait --for=condition=ready pod --all -n litmus --timeout=600s
+          
+          # Set up port forwarding to access ChaosCenter locally
+          kubectl port-forward -n litmus svc/chaos-litmus-frontend-service 9091:9091 &
+          kubectl port-forward -n litmus svc/chaos-litmus-server-service 9002:9002 &
+          
+          # Wait for port forwarding to be established
+          sleep 30
+
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
-
-      - name: Install Litmus
-        run: make install
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-pod-memory-hog.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-pod-memory-hog/g' nginx-pod-memory-hog.yml
+          sed -i 's/app: nginx/app: nginx-pod-memory-hog/g' nginx-pod-memory-hog.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-pod-memory-hog.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx-pod-memory-hog --port=80 --target-port=80 --name=nginx-service-pod-memory-hog --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-pod-memory-hog --namespace litmus --timeout=30s
 
       - name: Run pod-memory-hog experiment
         run: make pod-memory-hog
 
-      - name: Uninstall litmus
-        run: make uninstall
+
 
   Pod_Network_Corruption_Test:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
+      APP_NS: "litmus"
+      APP_LABEL: "app=nginx-pod-network-corruption"
+      INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
+      CREATE_ENV: "true"
+      ENV_NAME: "ci-test-env"
+      ENV_TYPE: "NON_PROD"
+      INFRA_NAME: "ci-infra-pod-network-corruption"
+      INFRA_NAMESPACE: "litmus"
+      INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
+      LITMUS_PROBE_NAME: "ci-http-probe-pod-network-corruption"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service-pod-network-corruption.litmus.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -324,24 +881,82 @@ jobs:
           kubectl wait node --all --for condition=ready --timeout=120s
           kubectl get nodes 
 
+      - name: Install Litmus ChaosCenter locally
+        run: |
+          # Add Litmus Helm repository
+          helm repo add litmuschaos https://litmuschaos.github.io/litmus-helm/
+          helm repo update
+          
+          # Install Litmus ChaosCenter
+          kubectl create namespace litmus
+          helm install chaos litmuschaos/litmus \
+            --namespace litmus \
+            --set portal.frontend.service.type=NodePort \
+            --set portal.server.service.type=NodePort \
+            --set mongodb.service.type=NodePort \
+            --wait --timeout=600s
+          
+          # Wait for all pods to be ready
+          kubectl wait --for=condition=ready pod --all -n litmus --timeout=600s
+          
+          # Set up port forwarding to access ChaosCenter locally
+          kubectl port-forward -n litmus svc/chaos-litmus-frontend-service 9091:9091 &
+          kubectl port-forward -n litmus svc/chaos-litmus-server-service 9002:9002 &
+          
+          # Wait for port forwarding to be established
+          sleep 30
+
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
-
-      - name: Install Litmus
-        run: make install
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-pod-network-corruption.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-pod-network-corruption/g' nginx-pod-network-corruption.yml
+          sed -i 's/app: nginx/app: nginx-pod-network-corruption/g' nginx-pod-network-corruption.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-pod-network-corruption.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx-pod-network-corruption --port=80 --target-port=80 --name=nginx-service-pod-network-corruption --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-pod-network-corruption --namespace litmus --timeout=30s
 
       - name: Run pod-network-corruption experiment
         run: make pod-network-corruption
 
-      - name: Uninstall litmus
-        run: make uninstall
+
 
   Pod_Network_Duplication_Test:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
+      APP_NS: "litmus"
+      APP_LABEL: "app=nginx-pod-network-duplication"
+      INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
+      CREATE_ENV: "true"
+      ENV_NAME: "ci-test-env"
+      ENV_TYPE: "NON_PROD"
+      INFRA_NAME: "ci-infra-pod-network-duplication"
+      INFRA_NAMESPACE: "litmus"
+      INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
+      LITMUS_PROBE_NAME: "ci-http-probe-pod-network-duplication"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service-pod-network-duplication.litmus.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -357,24 +972,82 @@ jobs:
           kubectl wait node --all --for condition=ready --timeout=120s
           kubectl get nodes 
 
+      - name: Install Litmus ChaosCenter locally
+        run: |
+          # Add Litmus Helm repository
+          helm repo add litmuschaos https://litmuschaos.github.io/litmus-helm/
+          helm repo update
+          
+          # Install Litmus ChaosCenter
+          kubectl create namespace litmus
+          helm install chaos litmuschaos/litmus \
+            --namespace litmus \
+            --set portal.frontend.service.type=NodePort \
+            --set portal.server.service.type=NodePort \
+            --set mongodb.service.type=NodePort \
+            --wait --timeout=600s
+          
+          # Wait for all pods to be ready
+          kubectl wait --for=condition=ready pod --all -n litmus --timeout=600s
+          
+          # Set up port forwarding to access ChaosCenter locally
+          kubectl port-forward -n litmus svc/chaos-litmus-frontend-service 9091:9091 &
+          kubectl port-forward -n litmus svc/chaos-litmus-server-service 9002:9002 &
+          
+          # Wait for port forwarding to be established
+          sleep 30
+
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-pod-network-duplication.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-pod-network-duplication/g' nginx-pod-network-duplication.yml
+          sed -i 's/app: nginx/app: nginx-pod-network-duplication/g' nginx-pod-network-duplication.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-pod-network-duplication.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx-pod-network-duplication --port=80 --target-port=80 --name=nginx-service-pod-network-duplication --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-pod-network-duplication --namespace litmus --timeout=30s
 
-      - name: Install Litmus
-        run: make install
+      - name: Run pod-network-duplication experiment
+        run: make pod-network-duplication
 
-      - name: Run pod-network-corruption experiment
-        run: make pod-network-corruption
 
-      - name: Uninstall litmus
-        run: make uninstall
         
   Pod_Network_Latency_Test:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
+      APP_NS: "litmus"
+      APP_LABEL: "app=nginx-pod-network-latency"
+      INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
+      CREATE_ENV: "true"
+      ENV_NAME: "ci-test-env"
+      ENV_TYPE: "NON_PROD"
+      INFRA_NAME: "ci-infra-pod-network-latency"
+      INFRA_NAMESPACE: "litmus"
+      INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
+      LITMUS_PROBE_NAME: "ci-http-probe-pod-network-latency"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service-pod-network-latency.litmus.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -390,24 +1063,82 @@ jobs:
           kubectl wait node --all --for condition=ready --timeout=120s
           kubectl get nodes 
 
+      - name: Install Litmus ChaosCenter locally
+        run: |
+          # Add Litmus Helm repository
+          helm repo add litmuschaos https://litmuschaos.github.io/litmus-helm/
+          helm repo update
+          
+          # Install Litmus ChaosCenter
+          kubectl create namespace litmus
+          helm install chaos litmuschaos/litmus \
+            --namespace litmus \
+            --set portal.frontend.service.type=NodePort \
+            --set portal.server.service.type=NodePort \
+            --set mongodb.service.type=NodePort \
+            --wait --timeout=600s
+          
+          # Wait for all pods to be ready
+          kubectl wait --for=condition=ready pod --all -n litmus --timeout=600s
+          
+          # Set up port forwarding to access ChaosCenter locally
+          kubectl port-forward -n litmus svc/chaos-litmus-frontend-service 9091:9091 &
+          kubectl port-forward -n litmus svc/chaos-litmus-server-service 9002:9002 &
+          
+          # Wait for port forwarding to be established
+          sleep 30
+
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-pod-network-latency.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-pod-network-latency/g' nginx-pod-network-latency.yml
+          sed -i 's/app: nginx/app: nginx-pod-network-latency/g' nginx-pod-network-latency.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-pod-network-latency.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx-pod-network-latency --port=80 --target-port=80 --name=nginx-service-pod-network-latency --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-pod-network-latency --namespace litmus --timeout=30s
 
-      - name: Install Litmus
-        run: make install
+      - name: Run pod-network-latency experiment
+        run: make pod-network-latency
 
-      - name: Run pod-network-corruption experiment
-        run: make pod-network-corruption
 
-      - name: Uninstall litmus
-        run: make uninstall
         
   Pod_Network_Loss_Test:
     runs-on: ubuntu-latest
     env:
       KUBECONFIG: /home/runner/.kube/config
+      LITMUS_ENDPOINT: "http://localhost:9091"
+      LITMUS_USERNAME: "admin"
+      LITMUS_PASSWORD: "litmus"
+      LITMUS_PROJECT_ID: "admin-project"
+      APP_NS: "litmus"
+      APP_LABEL: "app=nginx-pod-network-loss"
+      INSTALL_INFRA: "true"
+      ACTIVATE_INFRA: "true"
+      CREATE_ENV: "true"
+      ENV_NAME: "ci-test-env"
+      ENV_TYPE: "NON_PROD"
+      INFRA_NAME: "ci-infra-pod-network-loss"
+      INFRA_NAMESPACE: "litmus"
+      INFRA_SCOPE: "namespace"
+      INFRA_ACTIVATION_TIMEOUT: "5"
+      LITMUS_CREATE_PROBE: "true"
+      LITMUS_USE_EXISTING_PROBE: "false"
+      LITMUS_PROBE_NAME: "ci-http-probe-pod-network-loss"
+      LITMUS_PROBE_TYPE: "httpProbe"
+      LITMUS_PROBE_MODE: "SOT"
+      LITMUS_PROBE_URL: "http://nginx-service-pod-network-loss.litmus.svc.cluster.local:80"
+      LITMUS_PROBE_TIMEOUT: "30s"
+      LITMUS_PROBE_INTERVAL: "10s"
+      LITMUS_PROBE_ATTEMPTS: "1"
+      LITMUS_PROBE_RESPONSE_CODE: "200"
     steps:
       
       - uses: actions/checkout@v2
@@ -423,16 +1154,49 @@ jobs:
           kubectl wait node --all --for condition=ready --timeout=120s
           kubectl get nodes 
 
+      - name: Install Litmus ChaosCenter locally
+        run: |
+          # Add Litmus Helm repository
+          helm repo add litmuschaos https://litmuschaos.github.io/litmus-helm/
+          helm repo update
+          
+          # Install Litmus ChaosCenter
+          kubectl create namespace litmus
+          helm install chaos litmuschaos/litmus \
+            --namespace litmus \
+            --set portal.frontend.service.type=NodePort \
+            --set portal.server.service.type=NodePort \
+            --set mongodb.service.type=NodePort \
+            --wait --timeout=600s
+          
+          # Wait for all pods to be ready
+          kubectl wait --for=condition=ready pod --all -n litmus --timeout=600s
+          
+          # Set up port forwarding to access ChaosCenter locally
+          kubectl port-forward -n litmus svc/chaos-litmus-frontend-service 9091:9091 &
+          kubectl port-forward -n litmus svc/chaos-litmus-server-service 9002:9002 &
+          
+          # Wait for port forwarding to be established
+          sleep 30
+
       - name: Deploy a sample application for chaos injection
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
-          kubectl wait --for=condition=Ready pods --all --namespace default --timeout=90s
+          # Download and modify nginx deployment for unique naming
+          curl -o nginx-pod-network-loss.yml https://raw.githubusercontent.com/litmuschaos/chaos-ci-lib/master/app/nginx.yml
+          
+          # Replace deployment name and labels to make them unique
+          sed -i 's/name: nginx/name: nginx-pod-network-loss/g' nginx-pod-network-loss.yml
+          sed -i 's/app: nginx/app: nginx-pod-network-loss/g' nginx-pod-network-loss.yml
+          
+          # Apply to litmus namespace
+          kubectl apply -f nginx-pod-network-loss.yml -n litmus
+          kubectl wait --for=condition=Ready pods --all --namespace litmus --timeout=90s
+          
+          # Create a service for nginx to enable probe connectivity
+          kubectl expose deployment nginx-pod-network-loss --port=80 --target-port=80 --name=nginx-service-pod-network-loss --type=ClusterIP -n litmus
+          kubectl wait --for=condition=Ready pods -l app=nginx-pod-network-loss --namespace litmus --timeout=30s
 
-      - name: Install Litmus
-        run: make install
+      - name: Run pod-network-loss experiment
+        run: make pod-network-loss
 
-      - name: Run pod-network-corruption experiment
-        run: make pod-network-corruption
-
-      - name: Uninstall litmus
-        run: make uninstall        
+        
