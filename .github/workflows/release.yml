@@ -51,6 +51,14 @@ jobs:
           echo "TAG=${TAG}" >> $GITHUB_ENV
           echo "RELEASE_TAG=${TAG}" >> $GITHUB_ENV
 
+      - name: Build Docker Image
+        env:
+          DOCKER_REPO: ${{ env.REPONAME }}
+          DOCKER_IMAGE: ${{ env.IMAGENAME }}
+          DOCKER_TAG: release-build
+        run: |
+          make build
+
       - name: Build & Push Docker Image with version tag
         env:
           DOCKER_REPO: ${{ env.REPONAME }}
@@ -59,6 +67,7 @@ jobs:
           DNAME: ${{ secrets.DNAME }}
           DPASS: ${{ secrets.DPASS }}
         run: |
+          docker tag ${DOCKER_REPO}/${DOCKER_IMAGE}:release-build ${DOCKER_REPO}/${DOCKER_IMAGE}:${DOCKER_TAG}
           make push
 
       - name: Build & Push Docker Image with latest tag
@@ -69,6 +78,7 @@ jobs:
           DNAME: ${{ secrets.DNAME }}
           DPASS: ${{ secrets.DPASS }}
         run: |
+          docker tag ${DOCKER_REPO}/${DOCKER_IMAGE}:release-build ${DOCKER_REPO}/${DOCKER_IMAGE}:${DOCKER_TAG}
           make push
 
   security-scan:
