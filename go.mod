@@ -21,7 +21,6 @@ require (
 	k8s.io/apimachinery v0.26.0
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/klog v1.0.0
-	sigs.k8s.io/yaml v1.4.0
 )
 
 require (
@@ -73,6 +72,7 @@ require (
 	k8s.io/kube-openapi v0.0.0-20220124234850-424119656bbf // indirect
 	k8s.io/utils v0.0.0-20221107191617-1a15be271d1d // indirect
 	sigs.k8s.io/controller-runtime v0.11.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
 // Pinned to kubernetes-1.16.2
