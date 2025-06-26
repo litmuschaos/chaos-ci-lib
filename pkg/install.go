@@ -160,6 +160,7 @@ func InstallChaosEngine(experimentsDetails *types.ExperimentDetails, chaosEngine
 		chaosEngine.Spec.Appinfo.Appns = experimentsDetails.AppNS
 		chaosEngine.Spec.Appinfo.Applabel = experimentsDetails.AppLabel
 	}
+	chaosEngine.Spec.Appinfo.AppKind = experimentsDetails.AppKind
 	chaosEngine.Spec.ChaosServiceAccount = experimentsDetails.ChaosServiceAccount
 	chaosEngine.Spec.Experiments[0].Name = experimentsDetails.ExperimentName
 	chaosEngine.Spec.AnnotationCheck = experimentsDetails.AnnotationCheck
